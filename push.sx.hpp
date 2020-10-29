@@ -32,15 +32,15 @@ public:
     typedef eosio::singleton< "settings"_n, params > settings;
 
     /**
-     * ## ACTION `mine`
+     * ## ACTION `push`
      *
-     * Executor pushes mining action and receive reward
+     * Executor pushes action and receive reward
      *
      * - **authority**: `executor`
      *
      * ### params
      *
-     * - `{name} executor` - executor (account receive push fee)
+     * - `{name} executor` - executor (account receives push rewards)
      * - `{uint64_t} nonce` - arbitrary number
      *
      * ### Example

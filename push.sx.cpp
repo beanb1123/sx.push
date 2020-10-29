@@ -10,6 +10,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
 
     sx::push::settings _settings( get_self(), get_self().value );
     const auto settings = _settings.get_or_create(get_self());
+    check( settings.contracts.size(), "no contracts available at the moment");
 
     // randomize contract selection
     const int64_t now = current_time_point().time_since_epoch().count() / 500000;
@@ -20,7 +21,9 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     sx::push::mine_action mine( contract, { get_self(), "active"_n });
     mine.send( executor, nonce );
 
-    // pay executor
+    // send reward to executor
+    const asset balance = eosio::token::get_balance( "eosio.token"_n, get_self(), symbol_code{"EOS"});
+    check( balance >= settings.reward, get_self().to_string() + " has insufficient balance to pay for rewards at the moment");
     eosio::token::transfer_action transfer( "eosio.token"_n, { get_self(), "active"_n });
     transfer.send( get_self(), executor, settings.reward, "push" );
 }
