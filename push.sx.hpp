@@ -10,6 +10,13 @@ class [[eosio::contract("push.sx")]] push : public contract {
 public:
     using contract::contract;
 
+    struct [[eosio::table("state")]] state_row {
+        time_point      last;
+        uint64_t        count = 0;
+        asset           rewards = asset{0, symbol{"EOS", 4}};
+    };
+    typedef eosio::singleton< "state"_n, state_row > state;
+
     /**
      * ## TABLE `settings`
      *
