@@ -4,6 +4,7 @@ namespace sx {
 
 using eosio::name;
 using eosio::time_point;
+using eosio::extended_asset;
 
 class [[eosio::contract("push.sx")]] push : public contract {
 
@@ -13,7 +14,7 @@ public:
     struct [[eosio::table("state")]] state_row {
         time_point      last;
         uint64_t        count = 0;
-        asset           rewards = asset{0, symbol{"EOS", 4}};
+        asset           rewards = {0, symbol{"SX", 4}};
     };
     typedef eosio::singleton< "state"_n, state_row > state;
 
@@ -27,13 +28,13 @@ public:
      *
      * ```json
      * {
-     *   "reward": "0.0010 EOS",
+     *   "reward": {"quantity": "0.0050 SX", "contract": "token.sx"},
      *   "contracts": ["basic.sx"]
      * }
      * ```
      */
     struct [[eosio::table("settings")]] params {
-        asset               reward = asset{10, symbol{"EOS", 4}};
+        extended_asset      reward = {{50, symbol{"SX", 4}}, "token.sx"_n};
         vector<name>        contracts = {"basic.sx"_n};
     };
     typedef eosio::singleton< "settings"_n, params > settings;
