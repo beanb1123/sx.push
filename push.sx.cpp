@@ -9,56 +9,42 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     require_auth( executor );
 
     sx::push::settings _settings( get_self(), get_self().value );
-    const auto settings = _settings.get();
-    check( _settings.exists(), "contract is on going maintenance");
-    check( settings.contracts.size(), "no contracts available at the moment");
-
-    // record state
     sx::push::state _state( get_self(), get_self().value );
-    auto state = _state.get();
-    state.last = current_time_point();
-    state.count += 1;
-    state.rewards += settings.reward.quantity;
-    _state.set(state, get_self());
+    check( _settings.exists(), "contract is on going maintenance");
 
-    // randomize contract selection
-    const int64_t now = current_time_point().time_since_epoch().count() / 500000;
-    const uint64_t random = (executor.value * nonce * now) % 10000;
-    const name contract = settings.contracts[random % settings.contracts.size()];
+    // select random contract from nonce
+    const vector<name> contracts = _settings.get().contracts;
+    check( contracts.size(), "no contracts available at the moment");
+    const name contract = contracts[nonce % contracts.size()];
+    require_recipient( contract );
 
     // push mine action
-    require_recipient( contract );
-    sx::push::mine_action mine( contract, { get_self(), "active"_n });
-    mine.send( get_self(), random );
+    if ( executor != get_self() ) {
+        sx::push::mine_action mine( contract, { get_self(), "active"_n });
+        mine.send( executor, nonce );
+    }
 
-    // send reward to executor
-    const asset reward = settings.reward.quantity;
-    const asset balance = eosio::token::get_balance( settings.reward.contract, get_self(), reward.symbol.code());
-
-    check( balance >= reward, get_self().to_string() + " has insufficient balance to pay for rewards at the moment");
-    eosio::token::transfer_action transfer( settings.reward.contract, { get_self(), "active"_n });
-    transfer.send( get_self(), executor, reward, "push reward" );
+    // record state (can be used to throttle rate limits)
+    auto state = _state.get_or_default();
+    const time_point now = current_time_point();
+    state.current = now == state.last ? state.current + 1 : 1;
+    state.total += 1;
+    state.last = now;
+    _state.set(state, get_self());
 }
 
 [[eosio::action]]
-void sx::push::setparams( const optional<sx::push::params> params )
+void sx::push::setsettings( const optional<sx::push::settings_row> settings )
 {
     require_auth( get_self() );
     sx::push::settings _settings( get_self(), get_self().value );
     sx::push::state _state( get_self(), get_self().value );
 
-    // clear table if params is `null`
-    if ( !params ) {
+    // clear table if settings is `null`
+    if ( !settings ) {
         _settings.remove();
         _state.remove();
         return;
     }
-    _settings.set( *params, get_self() );
-
-    // clear state if rewards is different symbol
-    auto state = _state.get_or_create(get_self());
-    if ( params->reward.quantity.symbol != state.rewards.symbol ) {
-        state.rewards = asset{ 0, params->reward.quantity.symbol };
-        _state.set( state, get_self() );
-    }
+    _settings.set( *settings, get_self() );
 }

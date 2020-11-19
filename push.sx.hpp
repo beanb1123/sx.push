@@ -13,31 +13,31 @@ public:
 
     struct [[eosio::table("state")]] state_row {
         time_point      last;
-        uint64_t        count = 0;
-        asset           rewards = {0, symbol{"SX", 4}};
+        uint64_t        current = 0;
+        uint64_t        total = 0;
     };
     typedef eosio::singleton< "state"_n, state_row > state;
 
     /**
      * ## TABLE `settings`
      *
-     * - `{asset} reward` - reward paid to executor deducted from billed contract
      * - `{set<name>} contracts` - list of contracts to notify
+     * - `{uint64_t} max_per_block` - maximum amount of transactions per block
      *
      * ### example
      *
      * ```json
      * {
-     *   "reward": {"quantity": "0.0050 SX", "contract": "token.sx"},
-     *   "contracts": ["basic.sx"]
+     *   "contracts": ["basic.sx"],
+     *   "max_per_block": 20
      * }
      * ```
      */
-    struct [[eosio::table("settings")]] params {
-        extended_asset      reward = {{50, symbol{"SX", 4}}, "token.sx"_n};
+    struct [[eosio::table("settings")]] settings_row {
         vector<name>        contracts = {"basic.sx"_n};
+        uint64_t            max_per_block = 20;
     };
-    typedef eosio::singleton< "settings"_n, params > settings;
+    typedef eosio::singleton< "settings"_n, settings_row > settings;
 
     /**
      * ## ACTION `push`
@@ -69,20 +69,20 @@ public:
      *
      * ### params
      *
-     * - `{asset} reward` - reward paid to executor deducted from billed contract
      * - `{set<name>} contracts` - list of contracts to notify
+     * - `{uint64_t} max_per_block` - maximum amount of transactions per block
      *
      * ### Example
      *
      * ```bash
-     * $ cleos push action push.sx setparams '[["0.0010 EOS", ["basic.sx"]]]' -p push.sx
+     * $ cleos push action push.sx setparams '[[["basic.sx", 20]]]' -p push.sx
      * ```
      */
     [[eosio::action]]
-    void setparams( const optional<sx::push::params> params );
+    void setsettings( const optional<sx::push::settings_row> settings );
 
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
-    using setparams_action = eosio::action_wrapper<"setparams"_n, &sx::push::setparams>;
+    using setsettings_action = eosio::action_wrapper<"setsettings"_n, &sx::push::setsettings>;
 };
 }
