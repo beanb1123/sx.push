@@ -1,13 +1,12 @@
 #include <eosio/eosio.hpp>
 
+using namespace eosio;
+
+static constexpr extended_symbol SXEOS{{"SXEOS", 4}, "token.sx"_n};
+static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "token.sx"_n};
+
 namespace sx {
-
-using eosio::name;
-using eosio::time_point;
-using eosio::extended_asset;
-
 class [[eosio::contract("push.sx")]] push : public contract {
-
 public:
     using contract::contract;
 
@@ -81,8 +80,22 @@ public:
     [[eosio::action]]
     void setsettings( const optional<sx::push::settings_row> settings );
 
+    /**
+     * Notify contract when any token transfer notifiers relay contract
+     */
+    [[eosio::on_notify("*::transfer")]]
+    void on_transfer( const name from, const name to, const asset quantity, const std::string memo );
+
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
     using setsettings_action = eosio::action_wrapper<"setsettings"_n, &sx::push::setsettings>;
+private:
+    // eosio.token helper
+    void transfer( const name from, const name to, const extended_asset value, const string memo );
+    void retire( const extended_asset value, const string memo );
+    void issue( const extended_asset value, const string memo );
+
+    // vault
+    extended_asset calculate_retire( const asset payment );
 };
 }

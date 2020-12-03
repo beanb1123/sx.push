@@ -4,10 +4,10 @@
 cleos wallet unlock --password $(cat ~/eosio-wallet/.pass)
 
 # settings
-cleos push action push.sx setparams '[["0.0010 EOS", ["basic.sx", "miner.sx"]]]' -p push.sx
-
-# fund push.sx
-cleos transfer eosio push.sx "1.0000 EOS"
+cleos push action push.sx setsettings '[[["basic.sx"], 20]]' -p push.sx
 
 # mine
 cleos push action push.sx mine '["miner.sx", 123]' -p miner.sx
+
+# redeem
+cleos transfer miner.sx push.sx "1 SXCPU" --contract token.sx
