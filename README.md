@@ -5,19 +5,19 @@
 
 ### Redeem
 
-Executors can redeem their earned `SXCPU` tokens back to `push.sx` and receive `SXEOS` tokens.
+- Executors can redeem their earned `SXCPU` tokens back to `push.sx` and receive `SXEOS` tokens.
 
 ### Buy
 
-Any user can purchase `SXCPU` tokens by sending `SXEOS` to `push.sx` contract.
+- Any user can purchase `SXCPU` tokens by sending `SXEOS` to `push.sx` contract.
 
 ### Consume
 
-Contracts can deposit `SXCPU` tokens to `push.sx` which deduct `1 SXCPU` per executed transaction.
+- Contracts can deposit `SXCPU` tokens to `push.sx` which deduct `1 SXCPU` per executed transaction.
 
 ### Price
 
-The price is based on supply & demand using only two variables `SXEOS` balance and the active supply of `SXCPU`.
+- The price is based on supply & demand using only two variables `SXEOS` balance and the active supply of `SXCPU`.
 
 ```bash
 SXCPU price = SXEOS balance / SXCPU supply
@@ -25,10 +25,10 @@ SXCPU price = SXEOS balance / SXCPU supply
 
 | **price change** | **description** |
 |------------------|-----------------|
-| ↔️ no change      | Buy `SXEOS` => `SXCPU`
-| ↔️ no change      | Redeem `SXCPU` => `SXEOS`
-| ⬆️ increase      | Contracts deposit `SXCPU` tokens
-| ⬇️ decrease      | Executing transactions earning `SXCPU` tokens
+| ↔️ **no change**      | Buy `SXEOS` => `SXCPU`
+| ↔️ **no change**      | Redeem `SXCPU` => `SXEOS`
+| ⬆️ **increase**      | Contracts deposit `SXCPU` tokens
+| ⬇️ **decrease**      | Executing transactions earning `SXCPU` tokens
 
 ## Table of Content
 
