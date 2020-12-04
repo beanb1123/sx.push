@@ -2,8 +2,9 @@
 
 using namespace eosio;
 
-static constexpr extended_symbol SXEOS{{"SXEOS", 4}, "token.sx"_n};
-static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "token.sx"_n};
+static constexpr name TOKEN_CONTRACT = "token.sx"_n;
+static constexpr symbol SXEOS{"SXEOS", 4};
+static constexpr symbol SXCPU{"SXCPU", 4};
 
 namespace sx {
 class [[eosio::contract("push.sx")]] push : public contract {
@@ -95,7 +96,8 @@ private:
     void retire( const extended_asset value, const string memo );
     void issue( const extended_asset value, const string memo );
 
-    // vault
+    // issue/redeem SXCPU
     extended_asset calculate_retire( const asset payment );
+    extended_asset calculate_issue( const asset payment );
 };
 }
