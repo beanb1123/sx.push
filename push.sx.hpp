@@ -11,12 +11,33 @@ class [[eosio::contract("push.sx")]] push : public contract {
 public:
     using contract::contract;
 
+    /**
+     * ## TABLE `state`
+     *
+     * - `{time_point} last` - last timestamp executed mine action
+     * - `{uint64_t} current` - current number of transactions per block
+     * - `{uint64_t} total` - total number of transactions
+     * - `{extended_asset} balance` - reward balance
+     * - `{extended_asset} supply` - supply of CPU tokens
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "last": "2020-12-04T01:38:02.000"
+     *   "current": 1,
+     *   "total": 25941
+     * }
+     * ```
+     */
     struct [[eosio::table("state")]] state_row {
         time_point      last;
         uint64_t        current = 0;
         uint64_t        total = 0;
+        extended_asset  balance;
+        extended_asset  supply;
     };
-    typedef eosio::singleton< "state"_n, state_row > state;
+    typedef eosio::singleton< "state"_n, state_row > state_table;
 
     /**
      * ## TABLE `settings`
@@ -80,6 +101,10 @@ public:
      */
     [[eosio::action]]
     void setsettings( const optional<sx::push::settings_row> settings );
+
+    // TESTING PURPOSES
+    [[eosio::action]]
+    void initstate();
 
     /**
      * Notify contract when any token transfer notifiers relay contract
