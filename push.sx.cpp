@@ -17,15 +17,13 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     check( contracts.size(), "no contracts available at the moment");
     const name contract = contracts[nonce % contracts.size()];
 
-    // push mine action via inline action & on notify
-    sx::push::mine_action mine( contract, { get_self(), "active"_n });
-    mine.send( executor, nonce );
-    require_recipient( contract );
-
     // mine 1 SXCPU per action
     const extended_asset out = { 10000, { SXCPU, TOKEN_CONTRACT } };
     issue( out, "mine" );
     transfer( get_self(), executor, out, get_self().to_string() );
+
+    // push mine action via inline action & on notify
+    require_recipient( contract );
 
     // record state (TO-DO can be used to throttle rate limits)
     auto state = _state.get_or_default();
