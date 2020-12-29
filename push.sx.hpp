@@ -5,6 +5,7 @@ using namespace eosio;
 static constexpr name TOKEN_CONTRACT = "token.sx"_n;
 static constexpr symbol SXEOS{"SXEOS", 4};
 static constexpr symbol SXCPU{"SXCPU", 4};
+static constexpr symbol EOS{"EOS", 4};
 
 namespace sx {
 class [[eosio::contract("push.sx")]] push : public contract {
@@ -102,9 +103,8 @@ public:
     [[eosio::action]]
     void setsettings( const optional<sx::push::settings_row> settings );
 
-    // TESTING PURPOSES
     [[eosio::action]]
-    void initstate();
+    void update();
 
     /**
      * Notify contract when any token transfer notifiers relay contract
@@ -115,6 +115,7 @@ public:
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
     using setsettings_action = eosio::action_wrapper<"setsettings"_n, &sx::push::setsettings>;
+    using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
 private:
     // eosio.token helper
     void transfer( const name from, const name to, const extended_asset value, const string memo );

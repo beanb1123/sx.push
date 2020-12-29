@@ -1,19 +1,6 @@
 # `push.sx`
 
-1. `executors`: push via `push.sx` earns `1 SXCPU` per succesful transaction
-2. `contracts`: consumes `1 SXCPU` per executed transactions
-
-### Redeem
-
-- Executors can redeem their earned `SXCPU` tokens back to `push.sx` and receive `SXEOS` tokens.
-
-### Buy
-
-- Any user can purchase `SXCPU` tokens by sending `SXEOS` to `push.sx` contract.
-
-### Consume
-
-- Contracts can deposit `SXCPU` tokens to `push.sx` which deduct `1 SXCPU` per executed transaction.
+> Execute `push.sx::mine` action to earns `1 SXCPU` per succesful transaction, can redeem `SXCPU` tokens in exchange for `SXEOS` tokens by sending back to `push.sx` contract.
 
 ### Price
 
@@ -23,12 +10,11 @@
 SXCPU price = SXEOS balance / SXCPU supply
 ```
 
-| **price change** | **description** |
-|------------------|-----------------|
-| ↔️ **no change**      | Buy `SXEOS` => `SXCPU`
-| ↔️ **no change**      | Redeem `SXCPU` => `SXEOS`
-| ⬆️ **increase**      | Contracts deposit `SXCPU` tokens
-| ⬇️ **decrease**      | Executing transactions earning `SXCPU` tokens
+| **price change**   | **description** |
+|--------------------|-----------------|
+| ↔️ **no change**    | Redeem `SXCPU` => `SXEOS`
+| ⬇️ **decrease**     | Executing transactions earning `SXCPU` tokens
+| ⬆️ **increase**     | Deposit `EOS` to `push.sx`
 
 ## Table of Content
 
@@ -61,25 +47,25 @@ Set contract settings
 
 ### params
 
-- `{asset} reward` - reward paid to executor deducted from billed contract
 - `{set<name>} contracts` - list of contracts to notify
+- `{uint64_t} max_per_block` - maximum amount of transactions per block
 
 ### Example
 
 ```bash
-$ cleos push action push.sx setparams '[["0.0010 EOS", ["basic.sx"]]]' -p push.sx
+$ cleos push action push.sx setparams '[[["basic.sx", 20]]]' -p push.sx
 ```
 
 ## TABLE `settings`
 
-- `{asset} fee` - reward paid to executor deducted from billed contract
 - `{set<name>} contracts` - list of contracts to notify
+- `{uint64_t} max_per_block` - maximum amount of transactions per block
 
 ### example
 
 ```json
 {
-    "fee": "0.0010 EOS",
-    "contracts": ["basic.sx"]
+    "contracts": ["basic.sx"],
+    "max_per_block": 20
 }
 ```

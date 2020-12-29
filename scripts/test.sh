@@ -3,16 +3,16 @@
 # unlock wallet
 cleos wallet unlock --password $(cat ~/eosio-wallet/.pass)
 
+# init SXEOS from vaults & send to push.sx
+cleos transfer eosio push.sx "0.0100 EOS"
+
 # settings
-cleos push action token.sx open '["push.sx", "4,SXEOS", "push.sx"]' -p push.sx
 cleos push action push.sx setsettings '[[["basic.sx"], 20]]' -p push.sx
-cleos transfer eosio push.sx "700000.0000 SXEOS" --contract token.sx
 
 # mine
-cleos push action push.sx mine '["miner.sx", 123]' -p miner.sx
+cleos push action push.sx mine '["myaccount", 123]' -p myaccount
+cleos push action push.sx mine '["myaccount", 456]' -p myaccount
+cleos push action push.sx mine '["myaccount", 789]' -p myaccount
 
 # redeem
-cleos transfer miner.sx push.sx "1 SXCPU" --contract token.sx
-
-# burn
-cleos transfer eosio push.sx "1 SXCPU" --contract token.sx "🔥"
+cleos transfer myaccount push.sx "1 SXCPU" --contract token.sx

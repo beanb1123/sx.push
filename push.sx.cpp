@@ -50,12 +50,11 @@ void sx::push::setsettings( const optional<sx::push::settings_row> settings )
         return;
     }
     _settings.set( *settings, get_self() );
-
-    initstate();
+    update();
 }
 
 [[eosio::action]]
-void sx::push::initstate()
+void sx::push::update()
 {
     require_auth( get_self() );
 
@@ -80,45 +79,40 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     const symbol sym = quantity.symbol;
 
     // ignore outgoing transfers
-    if ( to != get_self() ) return;
+    if ( to != get_self() || from == "vaults.sx"_n ) return;
 
     // validate input
-    check( contract == TOKEN_CONTRACT, "invalid token contract");
+    check( contract == TOKEN_CONTRACT || contract == "eosio.token"_n, "invalid token contract");
 
-    // state
-    sx::push::state_table _state( get_self(), get_self().value );
-    check( _state.exists(), "contract is under maintenance");
-    auto state = _state.get();
+    // send EOS to SX Vaults (increases value of SXCPU)
+    if ( sym == EOS ) {
+        // mint SXEOS for contract
+        transfer( get_self(), "vaults.sx"_n, { quantity, contract }, get_self().to_string() );
+
+        // update newly received SXEOS balance
+        sx::push::update_action update( get_self(), { get_self(), "active"_n });
+        update.send();
 
     // redeem - SXCPU => SXEOS
-    if ( sym == SXCPU ) {
-        // burn SXCPU
-        if ( memo == "🔥") {
-            retire( { quantity, contract }, "retire" );
-            state.supply -= { quantity, contract };
-        } else {
-            const extended_asset out = calculate_retire( quantity );
-            retire( { quantity, contract }, "retire" );
-            transfer( get_self(), from, out, get_self().to_string() );
+    } else if ( sym == SXCPU ) {
+        // state
+        sx::push::state_table _state( get_self(), get_self().value );
+        check( _state.exists(), "contract is under maintenance");
+        auto state = _state.get();
 
-            state.balance -= out;
-            state.supply -= { quantity, contract };
-        }
-
-    // purchase - SXEOS => SXCPU
-    } else if ( sym == SXEOS ) {
-        const extended_asset out = calculate_issue( quantity );
-        issue( out, "issue" );
+        // calculate retire
+        const extended_asset out = calculate_retire( quantity );
+        retire( { quantity, contract }, "retire" );
         transfer( get_self(), from, out, get_self().to_string() );
 
-        state.balance += { quantity, contract };
-        state.supply += out;
+        // update state
+        state.balance -= out;
+        state.supply -= { quantity, contract };
+        _state.set( state, get_self() );
 
     } else {
         check( false, "incoming transfer asset symbol not supported");
     }
-    // update state
-    _state.set( state, get_self() );
 }
 
 extended_asset sx::push::calculate_issue( const asset payment )
