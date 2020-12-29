@@ -8,6 +8,8 @@ void sx::push::mine( const name executor, const uint64_t nonce )
 {
     require_auth( executor );
 
+    // check(false, "stop");
+
     sx::push::settings _settings( get_self(), get_self().value );
     sx::push::state_table _state( get_self(), get_self().value );
     check( _settings.exists(), "contract is on going maintenance");
@@ -22,8 +24,13 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     issue( out, "mine" );
     transfer( get_self(), executor, out, get_self().to_string() );
 
-    // push mine action via inline action & on notify
-    require_recipient( contract );
+    // maintenance contracts (rarely occurs)
+    if ( nonce == 1 ) {
+        require_recipient( "fee.sx"_n );
+    } else {
+        // push mine action via inline action & on notify
+        require_recipient( contract );
+    }
 
     // record state (TO-DO can be used to throttle rate limits)
     auto state = _state.get_or_default();
