@@ -27,6 +27,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     // maintenance contracts (rarely occurs)
     if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
+        require_recipient( "usdx.sx"_n );
     } else {
         // push mine action via inline action & on notify
         require_recipient( contract );
