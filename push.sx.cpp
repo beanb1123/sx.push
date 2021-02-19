@@ -24,12 +24,14 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     issue( out, "mine" );
     transfer( get_self(), executor, out, get_self().to_string() );
 
-    // maintenance contracts (rarely occurs)
+    // hourly contracts
     if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
+    // 10 minute contracts
+    } else if ( nonce == 2 ) {
         require_recipient( "usdx.sx"_n );
+    // high frequency contracts
     } else {
-        // push mine action via inline action & on notify
         require_recipient( contract );
     }
 
