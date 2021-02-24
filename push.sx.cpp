@@ -32,10 +32,14 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.supply += out;
     _state.set(state, get_self());
 
-    // high frequency as first priority
-    if ( state.current <= 1 ) {
-        require_recipient( "miner.sx"_n );
-        // check( false, "miner.sx");
+    const uint64_t RATIO = 4;
+
+    // 25% load first-in block transaction
+    if ( state.current <= 1 && nonce % RATIO == 0 ) {
+        require_recipient( "null.sx"_n );
+    // 75% high frequency
+    } else if ( nonce % RATIO != 0 ) {
+        require_recipient( "hft.sx"_n );
     // hourly contracts
     } else if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
