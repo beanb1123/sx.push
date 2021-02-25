@@ -19,7 +19,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     // const name contract = contracts[nonce % contracts.size()];
 
     // mine 1 SXCPU per action
-    const extended_asset out = { 10000, { SXCPU, TOKEN_CONTRACT } };
+    const extended_asset out = { 10000, SXCPU };
     issue( out, "mine" );
     transfer( get_self(), executor, out, get_self().to_string() );
 
@@ -34,21 +34,21 @@ void sx::push::mine( const name executor, const uint64_t nonce )
 
     const uint64_t RATIO = 4;
 
-    // 25% load first-in block transaction
-    if ( state.current <= 1 && nonce % RATIO == 0 ) {
-        require_recipient( "null.sx"_n );
-    // 75% high frequency
-    } else if ( nonce % RATIO != 0 ) {
-        require_recipient( "hft.sx"_n );
     // hourly contracts
-    } else if ( nonce == 1 ) {
+    if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
     // 10 minute contracts
     } else if ( nonce == 2 ) {
         require_recipient( "usdx.sx"_n );
+    // 25% load first-in block transaction
+    } else if ( state.current <= 1 && nonce % RATIO == 0 ) {
+        require_recipient( "null.sx"_n );
+    // 75% high frequency
+    } else if ( nonce % RATIO != 0 ) {
+        require_recipient( "basic.sx"_n );
     // fallback to basic.sx
     } else {
-        require_recipient( "basic.sx"_n );
+        require_recipient( "hft.sx"_n );
     }
 }
 
@@ -60,12 +60,6 @@ void sx::push::setsettings( const optional<sx::push::settings_row> settings )
     sx::push::settings _settings( get_self(), get_self().value );
     sx::push::state_table _state( get_self(), get_self().value );
 
-    // clear table if settings is `null`
-    if ( !settings ) {
-        _settings.remove();
-        _state.remove();
-        return;
-    }
     _settings.set( *settings, get_self() );
     update();
 }
@@ -77,8 +71,8 @@ void sx::push::update()
 
     sx::push::state_table _state( get_self(), get_self().value );
     auto state = _state.get_or_default();
-    state.balance = { eosio::token::get_balance( TOKEN_CONTRACT, get_self(), SXEOS.code() ), TOKEN_CONTRACT };
-    state.supply = { eosio::token::get_supply( TOKEN_CONTRACT, SXCPU.code() ), TOKEN_CONTRACT };
+    state.balance = { eosio::token::get_balance( "eosio.token"_n, get_self(), symbol_code{"EOS"} ), "eosio.token"_n };
+    state.supply = { eosio::token::get_supply( "token.sx"_n, symbol_code{"SXCPU"} ), "token.sx"_n };
     _state.set( state, get_self() );
 }
 
@@ -91,32 +85,26 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     // authenticate incoming `from` account
     require_auth( from );
 
+    // state
+    sx::push::state_table _state( get_self(), get_self().value );
+    check( _state.exists(), "contract is under maintenance");
+    auto state = _state.get();
+
     // helpers
     const name contract = get_first_receiver();
-    const symbol sym = quantity.symbol;
+    const extended_symbol ext_sym = { quantity.symbol, contract };
 
     // ignore outgoing transfers
     if ( to != get_self() || from == "vaults.sx"_n ) return;
 
-    // validate input
-    check( contract == TOKEN_CONTRACT || contract == "eosio.token"_n, "invalid token contract");
-
-    // send EOS to SX Vaults (increases value of SXCPU)
-    if ( sym == EOS ) {
-        // mint SXEOS for contract
-        transfer( get_self(), "vaults.sx"_n, { quantity, contract }, get_self().to_string() );
-
-        // update newly received SXEOS balance
+    // send EOS to push.sx (increases value of SXCPU)
+    if ( ext_sym == EOS ) {
+        check( from.suffix() == "sx"_n, "push.sx::on_notify: accepting EOS must be *.sx account");
         sx::push::update_action update( get_self(), { get_self(), "active"_n });
         update.send();
 
-    // redeem - SXCPU => SXEOS
-    } else if ( sym == SXCPU ) {
-        // state
-        sx::push::state_table _state( get_self(), get_self().value );
-        check( _state.exists(), "contract is under maintenance");
-        auto state = _state.get();
-
+    // redeem - SXCPU => EOS
+    } else if ( ext_sym == SXCPU ) {
         // calculate retire
         const extended_asset out = calculate_retire( quantity );
         retire( { quantity, contract }, "retire" );
@@ -128,6 +116,6 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
         _state.set( state, get_self() );
 
     } else {
-        check( false, "incoming transfer asset symbol not supported");
+        check( false, "invalid incoming transfer");
     }
 }

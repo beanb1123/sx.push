@@ -2,10 +2,8 @@
 
 using namespace eosio;
 
-static constexpr name TOKEN_CONTRACT = "token.sx"_n;
-static constexpr symbol SXEOS{"SXEOS", 4};
-static constexpr symbol SXCPU{"SXCPU", 4};
-static constexpr symbol EOS{"EOS", 4};
+static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "token.sx"_n };
+static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
 
 namespace sx {
 class [[eosio::contract("push.sx")]] push : public contract {
