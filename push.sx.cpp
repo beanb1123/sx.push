@@ -32,23 +32,33 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.supply += out;
     _state.set(state, get_self());
 
-    const uint64_t RATIO = 4;
+    const uint64_t RATIO = 8;
 
-    // hourly contracts
+    // 1 hour
     if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
-    // 10 minute contracts
+
+    // 10 minutes
     } else if ( nonce == 2 ) {
         require_recipient( "usdx.sx"_n );
+
+    // 1 minute
+    } else if ( nonce == 3 ) {
+        require_recipient( "eusd.sx"_n );
+
     // 25% load first-in block transaction
-    } else if ( state.current <= 1 && nonce % RATIO == 0 ) {
-        require_recipient( "null.sx"_n );
-    // 75% high frequency
-    } else if ( nonce % RATIO != 0 ) {
-        require_recipient( "basic.sx"_n );
-    // fallback to basic.sx
-    } else {
+    } else if ( nonce % RATIO == 0 ) {
+        // first transaction is null (or oracle when implemented)
+        if ( state.current <= 1 ) require_recipient( "null.sx"_n );
+        else require_recipient( "basic.sx"_n );
+
+    // 25% backup
+    } else if ( nonce % RATIO == 1 ) {
         require_recipient( "hft.sx"_n );
+
+    // 50% fallback
+    } else {
+        require_recipient( "gudafuqnbcg1"_n );
     }
 }
 
