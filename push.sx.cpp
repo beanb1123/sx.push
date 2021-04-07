@@ -32,18 +32,14 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.supply += out;
     _state.set(state, get_self());
 
-    const uint64_t RATIO = 8;
+    const uint64_t RATIO = 4;
 
     // 1 hour
     if ( nonce == 1 ) {
         require_recipient( "fee.sx"_n );
 
-    // 10 minutes
-    } else if ( nonce == 2 ) {
-        require_recipient( "usdx.sx"_n );
-
     // 1 minute
-    } else if ( nonce == 3 ) {
+    } else if ( nonce == 2 ) {
         require_recipient( "eusd.sx"_n );
 
     // 25% load first-in block transaction
@@ -52,14 +48,13 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         if ( state.current <= 1 ) require_recipient( "null.sx"_n );
         else require_recipient( "basic.sx"_n );
 
-    // 25% backup
-    } else if ( nonce % RATIO == 1 ) {
-        require_recipient( "hft.sx"_n );
-
-    // 50% fallback
+    // 75% fallback
     } else {
-        require_recipient( "gudafuqnbcg1"_n );
+        require_recipient( "hft.sx"_n );
     }
+
+    // notify CPU
+    require_recipient( "cpu.sx"_n );
 }
 
 [[eosio::action]]
