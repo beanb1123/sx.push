@@ -13,26 +13,17 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     sx::push::state_table _state( get_self(), get_self().value );
     check( _settings.exists(), "contract is on going maintenance");
 
-    // select random contract from nonce
-    // const vector<name> contracts = _settings.get().contracts;
-    // check( contracts.size(), "no contracts available at the moment");
-    // const name contract = contracts[nonce % contracts.size()];
-
-    // mine 1 SXCPU per action
-    const extended_asset out = { 10000, SXCPU };
-    issue( out, "mine" );
-    transfer( get_self(), executor, out, get_self().to_string() );
-
     // set state for throttle rate limits
     auto state = _state.get_or_default();
     const time_point now = current_time_point();
     state.current = now == state.last ? state.current + 1 : 1;
     state.total += 1;
     state.last = now;
-    state.supply += out;
-    _state.set(state, get_self());
 
-    const uint64_t RATIO = 4;
+    // Configurations
+    const uint64_t RATIO_A = 4;
+    const uint64_t RATIO_B = 50;
+    int64_t RATE = 1'0000;
 
     // 1 hour
     if ( nonce == 1 ) {
@@ -43,18 +34,29 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         require_recipient( "eusd.sx"_n );
 
     // 25% load first-in block transaction
-    } else if ( nonce % RATIO == 0 ) {
+    } else if ( nonce % RATIO_A == 0 ) {
         // first transaction is null (or oracle when implemented)
-        if ( state.current <= 1 ) require_recipient( "null.sx"_n );
-        else require_recipient( "basic.sx"_n );
+        if ( nonce % RATIO_B == 0 && state.current <= 1 ) require_recipient( "null.sx"_n );
+        else {
+            require_recipient( "basic.sx"_n );
+            RATE = 10'0000;
+        }
 
     // 75% fallback
     } else {
         require_recipient( "hft.sx"_n );
+        RATE = 10'0000;
     }
 
     // notify CPU
     require_recipient( "cpu.sx"_n );
+
+    // mine SXCPU per action
+    const extended_asset out = { RATE, SXCPU };
+    issue( out, "mine" );
+    transfer( get_self(), executor, out, get_self().to_string() );
+    state.supply += out;
+    _state.set(state, get_self());
 }
 
 [[eosio::action]]
