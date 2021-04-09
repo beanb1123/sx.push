@@ -39,27 +39,6 @@ public:
     typedef eosio::singleton< "state"_n, state_row > state_table;
 
     /**
-     * ## TABLE `settings`
-     *
-     * - `{set<name>} contracts` - list of contracts to notify
-     * - `{uint64_t} max_per_block` - maximum amount of transactions per block
-     *
-     * ### example
-     *
-     * ```json
-     * {
-     *   "contracts": ["basic.sx"],
-     *   "max_per_block": 20
-     * }
-     * ```
-     */
-    struct [[eosio::table("settings")]] settings_row {
-        vector<name>        contracts = {"basic.sx"_n};
-        uint64_t            max_per_block = 20;
-    };
-    typedef eosio::singleton< "settings"_n, settings_row > settings;
-
-    /**
      * ## ACTION `push`
      *
      * Executor pushes action and receive reward
@@ -80,27 +59,6 @@ public:
     [[eosio::action]]
     void mine( const name executor, const uint64_t nonce );
 
-    /**
-     * ## ACTION `setparams`
-     *
-     * Set contract settings
-     *
-     * - **authority**: `get_self()`
-     *
-     * ### params
-     *
-     * - `{set<name>} contracts` - list of contracts to notify
-     * - `{uint64_t} max_per_block` - maximum amount of transactions per block
-     *
-     * ### Example
-     *
-     * ```bash
-     * $ cleos push action push.sx setparams '[[["basic.sx", 20]]]' -p push.sx
-     * ```
-     */
-    [[eosio::action]]
-    void setsettings( const optional<sx::push::settings_row> settings );
-
     [[eosio::action]]
     void update();
 
@@ -112,7 +70,6 @@ public:
 
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
-    using setsettings_action = eosio::action_wrapper<"setsettings"_n, &sx::push::setsettings>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
 private:
     // eosio.token helper

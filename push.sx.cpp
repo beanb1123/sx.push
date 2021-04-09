@@ -9,21 +9,22 @@ void sx::push::mine( const name executor, const uint64_t nonce )
 {
     require_auth( executor );
 
-    sx::push::settings _settings( get_self(), get_self().value );
     sx::push::state_table _state( get_self(), get_self().value );
-    check( _settings.exists(), "contract is on going maintenance");
+    check( _state.exists(), "contract is on going maintenance");
 
     // set state for throttle rate limits
     auto state = _state.get_or_default();
     const time_point now = current_time_point();
+    const int64_t milliseconds = now.time_since_epoch().count() / 1000;
     state.current = now == state.last ? state.current + 1 : 1;
     state.total += 1;
     state.last = now;
 
     // Configurations
-    const uint64_t RATIO_A = 4;
-    const uint64_t RATIO_B = 50;
-    int64_t RATE = 1'0000;
+    const uint64_t RATIO_A = 4; // split
+    const uint64_t RATIO_B = 200; // frequency
+    const uint64_t RATIO_C = 2500; // ms time
+    int64_t RATE = 5'0000;
 
     // 1 hour
     if ( nonce == 1 ) {
@@ -33,11 +34,15 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     } else if ( nonce == 2 ) {
         require_recipient( "eusd.sx"_n );
 
+    } else if ( nonce == 3 ) {
+        require_recipient( "eosnationftw"_n );
+
     // 25% load first-in block transaction
     } else if ( nonce % RATIO_A == 0 ) {
         // first transaction is null (or oracle when implemented)
-        if ( nonce % RATIO_B == 0 && state.current <= 1 ) require_recipient( "null.sx"_n );
-        else {
+        if ( state.current <= 1 && nonce % RATIO_B == 0 && milliseconds % RATIO_C == 0 ) {
+            require_recipient( "null.sx"_n );
+        } else {
             require_recipient( "basic.sx"_n );
             RATE = 10'0000;
         }
@@ -57,18 +62,6 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     transfer( get_self(), executor, out, get_self().to_string() );
     state.supply += out;
     _state.set(state, get_self());
-}
-
-[[eosio::action]]
-void sx::push::setsettings( const optional<sx::push::settings_row> settings )
-{
-    require_auth( get_self() );
-
-    sx::push::settings _settings( get_self(), get_self().value );
-    sx::push::state_table _state( get_self(), get_self().value );
-
-    _settings.set( *settings, get_self() );
-    update();
 }
 
 [[eosio::action]]
