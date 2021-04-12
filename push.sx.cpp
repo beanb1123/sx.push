@@ -21,36 +21,44 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.last = now;
 
     // Configurations
-    const uint64_t RATIO_A = 4; // split
-    const uint64_t RATIO_B = 200; // frequency
-    const uint64_t RATIO_C = 2500; // ms time
-    int64_t RATE = 5'0000;
+    const uint64_t RATIO_A = 4; // split (25/75)
+    const uint64_t RATIO_B = 100; // frequency (1/100)
+    const uint64_t RATIO_C = 2500; // 2500ms interval time
+    int64_t RATE = 5'0000; // 5.0000 SXCPU base rate
 
+    // random number
+    const vector<uint64_t> nonces = {123, 345, 227, 992, 213, 455, 123, 550, 100};
+    const uint64_t salt = nonces[ state.total % nonces.size() ];
+    const uint64_t random = (salt + milliseconds / 500 + executor.value + nonce) % RATIO_B;
+
+    // first transaction is null (or oracle when implemented)
+    // 1. Frequency 1/100
+    // 2. First transaction
+    // 3. 2500ms interval
+    if ( random == 0 && state.current <= 1 && milliseconds % RATIO_C == 0 ) {
+        require_recipient( "null.sx"_n );
     // 1 hour
-    if ( nonce == 1 ) {
+    } else if ( random == 1 ) {
         require_recipient( "fee.sx"_n );
 
     // 1 minute
-    } else if ( nonce == 2 ) {
+    } else if ( random == 2 ) {
         require_recipient( "eusd.sx"_n );
 
-    } else if ( nonce == 3 ) {
+    } else if ( random == 3 ) {
         require_recipient( "eosnationftw"_n );
 
-    // 25% load first-in block transaction
-    } else if ( nonce % RATIO_A == 0 ) {
-        // first transaction is null (or oracle when implemented)
-        if ( state.current <= 1 && nonce % RATIO_B == 0 && milliseconds % RATIO_C == 0 ) {
-            require_recipient( "null.sx"_n );
-        } else {
-            require_recipient( "basic.sx"_n );
-            RATE = 10'0000;
-        }
+    } else if ( random == 4 ) {
+        require_recipient( "unpack.gems"_n );
 
+    // 25% load first-in block transaction
+    } else if ( random % RATIO_A == 0 ) {
+        require_recipient( "hft.sx"_n );
+        RATE = 20'0000;
     // 75% fallback
     } else {
-        require_recipient( "hft.sx"_n );
-        RATE = 10'0000;
+        require_recipient( "basic.sx"_n );
+        RATE = 20'0000;
     }
 
     // notify CPU
