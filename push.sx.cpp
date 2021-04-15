@@ -1,5 +1,6 @@
 #include <sx.swap/swap.sx.hpp>
 #include <eosio.token/eosio.token.hpp>
+#include <eosio/transaction.hpp>
 
 #include "push.sx.hpp"
 #include "src/helpers.cpp"
@@ -21,29 +22,31 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.last = now;
 
     // Configurations
-    const uint64_t RATIO_A = 2; // split (25/75)
-    const uint64_t RATIO_B = 1; // frequency (1/20)
-    const uint64_t RATIO_C = 500; // 500ms interval time
-    int64_t RATE = RATIO_C * 20; // 1.0000 SXCPU base rate
+    sx::push::config_table _config( get_self(), get_self().value );
+    auto config = _config.get_or_default();
+    const uint64_t RATIO_A = config.a; // split (25/75)
+    const uint64_t RATIO_B = config.b; // frequency (1/20)
+    const uint64_t RATIO_C = config.c; // 2500ms interval time
+    int64_t RATE = RATIO_C * 20; // 5.0000 SXCPU base rate
 
     // random number
     const vector<uint64_t> nonces = {123, 345, 227, 992, 213, 455, 123, 550, 100};
     const uint64_t salt = nonces[ state.total % nonces.size() ];
     const uint64_t random = (salt + milliseconds / 500 + executor.value + nonce) % 1000;
 
-    // 1 hour
+    // strategy dispatch
+    name strategy;
     if ( nonce == 1 || random == 1 ) {
-        require_recipient( "fee.sx"_n );
+        strategy = "fee.sx"_n;
 
-    // 1 minute
     } else if ( nonce == 2 || random == 2 ) {
-        require_recipient( "eusd.sx"_n );
+        strategy = "eusd.sx"_n;
 
     } else if ( nonce == 3 || random == 3 ) {
-        require_recipient( "eosnationftw"_n );
+        strategy = "eosnationftw"_n;
 
     } else if ( nonce == 4 || random == 4 ) {
-        require_recipient( "unpack.gems"_n );
+        strategy = "unpack.gems"_n;
 
     // 25% load first-in block transaction
     } else if ( random % RATIO_A == 0 ) {
@@ -52,26 +55,42 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         // 2. First transaction
         // 3. 2500ms interval
         if ( state.current <= 1 && milliseconds % RATIO_C == 0 && random % RATIO_B == 0 ) {
-            require_recipient( "null.sx"_n );
+            strategy = "null.sx"_n;
         } else {
-            require_recipient( "hft.sx"_n );
+            strategy = "basic.sx"_n;
             RATE = 20'0000;
         }
     // 75% fallback
     } else {
-        require_recipient( "basic.sx"_n );
+        strategy = "hft.sx"_n;
         RATE = 20'0000;
     }
 
-    // notify CPU
-    require_recipient( "cpu.sx"_n );
+    // notify strategy
+    require_recipient( strategy );
 
     // mine SXCPU per action
     const extended_asset out = { RATE, SXCPU };
+    const name first_authorizer = get_first_authorizer(executor);
+    const name to = first_authorizer == "miner.sx"_n ? "miner.sx"_n : executor;
+
+    // issue mining
     issue( out, "mine" );
-    transfer( get_self(), executor, out, get_self().to_string() );
+    transfer( get_self(), to, out, get_self().to_string() );
     state.supply += out;
     _state.set(state, get_self());
+
+    // logging
+    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    pushlog.send( executor, first_authorizer, strategy, out.quantity );
+}
+
+[[eosio::action]]
+void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
+{
+    require_auth( get_self() );
+    require_recipient( "cpu.sx"_n );
+    require_recipient( "stats.sx"_n );
 }
 
 [[eosio::action]]
@@ -84,6 +103,20 @@ void sx::push::update()
     state.balance = { eosio::token::get_balance( "eosio.token"_n, get_self(), symbol_code{"EOS"} ), "eosio.token"_n };
     state.supply = { eosio::token::get_supply( "token.sx"_n, symbol_code{"SXCPU"} ), "token.sx"_n };
     _state.set( state, get_self() );
+}
+
+[[eosio::action]]
+void sx::push::setconfig( const config_row config )
+{
+    require_auth( get_self() );
+
+    sx::push::config_table _config( get_self(), get_self().value );
+    auto last_config = _config.get_or_default();
+    check( config.a <= 10, "`a` cannot exceed 10");
+    check( config.b <= 100, "`b` cannot exceed 100");
+    check( config.c % 500 == 0, "`c` must be modulus of 500");
+    check( config.a != last_config.a || config.b != last_config.b || config.c != last_config.c, "`config` must was not modified");
+    _config.set( config, get_self() );
 }
 
 /**

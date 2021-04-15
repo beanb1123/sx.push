@@ -38,6 +38,13 @@ public:
     };
     typedef eosio::singleton< "state"_n, state_row > state_table;
 
+    struct [[eosio::table("config")]] config_row {
+        uint64_t        a = 4; // split (25/75)
+        uint64_t        b = 20; // frequency (1/20)
+        uint64_t        c = 2500; // 2500ms interval time
+    };
+    typedef eosio::singleton< "config"_n, config_row > config_table;
+
     /**
      * ## ACTION `push`
      *
@@ -62,6 +69,12 @@ public:
     [[eosio::action]]
     void update();
 
+    [[eosio::action]]
+    void setconfig( const config_row config );
+
+    [[eosio::action]]
+    void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+
     /**
      * Notify contract when any token transfer notifiers relay contract
      */
@@ -71,6 +84,8 @@ public:
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
+    using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+
 private:
     // eosio.token helper
     void transfer( const name from, const name to, const extended_asset value, const string memo );
@@ -80,5 +95,18 @@ private:
     // issue/redeem SXCPU
     extended_asset calculate_retire( const asset payment );
     extended_asset calculate_issue( const asset payment );
+
+    name get_first_authorizer( const name executor ) {
+        char tx_buffer[eosio::transaction_size()];
+        eosio::read_transaction( tx_buffer, eosio::transaction_size() );
+        const std::vector<char> trx_vector(tx_buffer, tx_buffer + sizeof tx_buffer / sizeof tx_buffer[0]);
+        transaction trx = eosio::unpack<transaction>(trx_vector);
+        action first_action = trx.actions[0];
+
+        for ( auto auth: first_action.authorization ) {
+            return auth.actor;
+        }
+        return executor;
+    };
 };
 }
