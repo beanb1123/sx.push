@@ -51,3 +51,9 @@ void sx::push::transfer( const name from, const name to, const extended_asset va
     eosio::token::transfer_action transfer( value.contract, { from, "active"_n });
     transfer.send( from, to, value.quantity, memo );
 }
+
+void sx::push::exec( const name proposer, const name proposal_name )
+{
+    eosio::msig::exec_action exec( "eosio.msig"_n, { get_self(), "active"_n });
+    exec.send( proposer, proposal_name, get_self());
+}

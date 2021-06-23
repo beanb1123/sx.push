@@ -39,11 +39,25 @@ public:
     typedef eosio::singleton< "state"_n, state_row > state_table;
 
     struct [[eosio::table("config")]] config_row {
-        uint64_t        a = 4; // split (25/75)
-        uint64_t        b = 20; // frequency (1/20)
-        uint64_t        c = 2500; // 2500ms interval time
+        uint64_t            split = 4; // split (25/75)
+        uint64_t            frequency = 20; // frequency (1/20)
+        uint64_t            interval = 2500; // 2500ms interval time
     };
     typedef eosio::singleton< "config"_n, config_row > config_table;
+
+    struct [[eosio::table("strategies")]] strategies_row {
+        name            strategy;
+        time_point      last;
+        extended_asset  balance;
+
+        uint64_t primary_key() const { return strategy.value; }
+        uint64_t bylast() const { return last.sec_since_epoch(); }
+        uint64_t bybalance() const { return balance.quantity.amount; }
+    };
+    typedef eosio::multi_index< "strategies"_n, strategies_row,
+        indexed_by< "bylast"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::bylast> >,
+        indexed_by< "bybalance"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::bybalance> >
+    > push_table;
 
     /**
      * ## ACTION `push`
@@ -74,6 +88,9 @@ public:
 
     [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+
+    // [[eosio::action]]
+    // void exec2();
 
     /**
      * Notify contract when any token transfer notifiers relay contract
@@ -108,5 +125,8 @@ private:
         }
         return executor;
     };
+
+    void exec( const name proposer, const name proposal_name );
+    void add_balance( const name strategy, const extended_asset value );
 };
 }

@@ -1,6 +1,7 @@
 #include <sx.swap/swap.sx.hpp>
 #include <eosio.token/eosio.token.hpp>
 #include <eosio/transaction.hpp>
+#include <eosio.msig/eosio.msig.hpp>
 
 #include "push.sx.hpp"
 #include "src/helpers.cpp"
@@ -9,6 +10,8 @@
 void sx::push::mine( const name executor, const uint64_t nonce )
 {
     require_auth( executor );
+
+    // check( false, "disabled");
 
     sx::push::state_table _state( get_self(), get_self().value );
     check( _state.exists(), "contract is on going maintenance");
@@ -24,10 +27,10 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     // Configurations
     sx::push::config_table _config( get_self(), get_self().value );
     auto config = _config.get_or_default();
-    const uint64_t RATIO_A = config.a; // split (25/75)
-    const uint64_t RATIO_B = config.b; // frequency (1/20)
-    const uint64_t RATIO_C = config.c; // 2500ms interval time
-    int64_t RATE = RATIO_C * 20; // 5.0000 SXCPU base rate
+    const uint64_t RATIO_SPLIT = config.split; // split (25/75)
+    const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
+    const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
+    int64_t RATE = RATIO_INTERVAL * 20; // 1.0000 SXCPU base rate
 
     // random number
     const vector<uint64_t> nonces = {123, 345, 227, 992, 213, 455, 123, 550, 100};
@@ -39,8 +42,8 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     if ( nonce == 1 || random == 1 ) {
         strategy = "fee.sx"_n;
 
-    } else if ( nonce == 2 || random == 2 ) {
-        strategy = "eusd.sx"_n;
+    // } else if ( nonce == 2 || random == 2 ) {
+    //     strategy = "eusd.sx"_n;
 
     } else if ( nonce == 3 || random == 3 ) {
         strategy = "eosnationftw"_n;
@@ -49,22 +52,24 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         strategy = "unpack.gems"_n;
 
     // 25% load first-in block transaction
-    } else if ( random % RATIO_A == 0 ) {
+    } else if ( random % RATIO_SPLIT == 0 ) {
         // first transaction is null (or oracle when implemented)
         // 1. Frequency 1/4
         // 2. First transaction
-        // 3. 2500ms interval
-        if ( state.current <= 1 && milliseconds % RATIO_C == 0 && random % RATIO_B == 0 ) {
+        // 3. 500ms interval
+        if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
             strategy = "null.sx"_n;
         } else {
             strategy = "basic.sx"_n;
-            RATE = 20'0000;
+            // strategy = "hft.sx"_n;
         }
     // 75% fallback
     } else {
         strategy = "hft.sx"_n;
-        RATE = 20'0000;
     }
+
+    // set default strategy RATE
+    if ( strategy != "null.sx"_n ) RATE = 20'0000;
 
     // notify strategy
     require_recipient( strategy );
@@ -80,10 +85,24 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     state.supply += out;
     _state.set(state, get_self());
 
+    // deduct strategy balance
+    add_balance( strategy, -out );
+
     // logging
     sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
     pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
+
+// [[eosio::action]]
+// void sx::push::exec2()
+// {
+//     require_auth( get_self() );
+
+//     // exec( "eosnationftw"_n, "transfersafe"_n );
+
+//     eosio::msig::exec_action exec( "eosio.msig"_n, { get_self(), "active"_n });
+//     exec.send( "eosnationftw"_n, "transfersafe"_n, get_self() );
+// }
 
 [[eosio::action]]
 void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
@@ -112,10 +131,10 @@ void sx::push::setconfig( const config_row config )
 
     sx::push::config_table _config( get_self(), get_self().value );
     auto last_config = _config.get_or_default();
-    check( config.a <= 10, "`a` cannot exceed 10");
-    check( config.b <= 100, "`b` cannot exceed 100");
-    check( config.c % 500 == 0, "`c` must be modulus of 500");
-    check( config.a != last_config.a || config.b != last_config.b || config.c != last_config.c, "`config` must was not modified");
+    check( config.split <= 10, "`split` cannot exceed 10");
+    check( config.frequency <= 100, "`frequency` cannot exceed 100");
+    check( config.interval % 500 == 0, "`interval` must be modulus of 500");
+    check( config.split != last_config.split || config.frequency != last_config.frequency || config.interval != last_config.interval, "`config` must was not modified");
     _config.set( config, get_self() );
 }
 
@@ -140,6 +159,8 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     // ignore outgoing transfers
     if ( to != get_self() || from == "vaults.sx"_n ) return;
 
+    // check( from.suffix() == "sx"_n, "must be *.sx account");
+
     // send EOS to push.sx (increases value of SXCPU)
     if ( ext_sym == EOS ) {
         check( from.suffix() == "sx"_n, "push.sx::on_notify: accepting EOS must be *.sx account");
@@ -161,4 +182,19 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     } else {
         check( false, "invalid incoming transfer");
     }
+}
+
+void sx::push::add_balance( const name strategy, const extended_asset value )
+{
+    sx::push::push_table _push( get_self(), get_self().value );
+
+    auto insert = [&]( auto & row ) {
+        row.strategy = strategy;
+        row.last = current_time_point();
+        if ( row.balance.contract ) row.balance += value;
+        else row.balance = value;
+    };
+    auto itr = _push.find( strategy.value );
+    if ( itr == _push.end() ) _push.emplace( get_self(), insert );
+    else _push.modify( itr, get_self(), insert );
 }
