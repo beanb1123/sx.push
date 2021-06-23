@@ -7,7 +7,9 @@ cleos wallet unlock --password $(cat ~/eosio-wallet/.pass)
 cleos transfer eosio push.sx "0.0100 EOS"
 
 # settings
-cleos push action push.sx setsettings '[[["basic.sx"], 20]]' -p push.sx
+# cleos push action push.sx setsettings '[[["basic.sx"], 20]]' -p push.sx
+cleos push action push.sx setconfig '[[2, 4, 500]]' -p push.sx
+cleos push action push.sx update '[]' -p push.sx
 
 # mine
 cleos push action push.sx mine '["myaccount", 123]' -p myaccount
