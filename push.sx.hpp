@@ -3,7 +3,7 @@
 
 using namespace eosio;
 
-static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "token.sx"_n };
+static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "push.sx"_n };
 static constexpr extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
 static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
 
@@ -110,7 +110,7 @@ private:
 
     // issue/redeem SXCPU
     extended_asset calculate_retire( const asset payment );
-    extended_asset calculate_issue( const asset payment );
+    // extended_asset calculate_issue( const asset payment );
 
     name get_first_authorizer( const name executor ) {
         char tx_buffer[eosio::transaction_size()];

@@ -101,19 +101,19 @@ namespace eosio {
          [[eosio::action]]
          void close( const name& owner, const symbol& symbol );
 
-         static extended_asset get_supply( const extended_symbol ext_sym )
+         static asset get_supply( const extended_symbol ext_sym )
          {
             const symbol_code sym_code = ext_sym.get_symbol().code();
             stats _stats( ext_sym.get_contract(), sym_code.raw() );
             const auto stats = _stats.get( sym_code.raw(), "supply does not exists" );
-            return { stats.supply.amount, ext_sym };
+            return stats.supply;
          }
 
-         static extended_asset get_balance( const extended_symbol ext_sym, const name owner )
+         static asset get_balance( const extended_symbol ext_sym, const name owner )
          {
             accounts _accounts( ext_sym.get_contract(), owner.value );
             const auto accounts = _accounts.get( ext_sym.get_symbol().code().raw(), "balance does not exists" );
-            return { accounts.balance.amount, ext_sym };
+            return accounts.balance;
          }
 
          using create_action = eosio::action_wrapper<"create"_n, &token::create>;

@@ -25,4 +25,4 @@ cleos push action eosio.token create '["eosio", "100000000.0000 EOS"]' -p eosio.
 cleos push action eosio.token issue '["eosio", "5000000.0000 EOS", "init"]' -p eosio
 
 # create SXCPU & SXEOS token
-cleos push action token.sx create '["push.sx", "461168601842738.7903 SXCPU"]' -p token.sx
+cleos push action token.sx create '["push.sx", "100000000.0000 SXCPU"]' -p push.sx

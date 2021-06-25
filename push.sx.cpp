@@ -82,7 +82,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     // issue mining
     issue( out, "mine" );
     transfer( get_self(), to, out, get_self().to_string() );
-    state.supply += out;
+    state.supply.quantity += out.quantity;
     _state.set(state, get_self());
 
     // deduct strategy balance
@@ -108,8 +108,10 @@ void sx::push::update()
 
     sx::push::state_table _state( get_self(), get_self().value );
     auto state = _state.get_or_default();
-    state.balance = token::get_balance( EOS, get_self() );
-    state.supply = token::get_supply( SXCPU );
+    state.balance.contract = EOS.get_contract();
+    state.balance.quantity = token::get_balance( EOS, get_self() );
+    state.supply.contract = SXCPU.get_contract();
+    state.supply.quantity = token::get_supply( SXCPU ) + token::get_supply( LEGACY_SXCPU );
     _state.set( state, get_self() );
 }
 
@@ -148,7 +150,7 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     // ignore outgoing transfers
     if ( to != get_self() || from == "vaults.sx"_n ) return;
 
-    // check( from.suffix() == "sx"_n, "must be *.sx account");
+    check( from.suffix() == "sx"_n, "must be *.sx account");
 
     // send EOS to push.sx (increases value of SXCPU)
     if ( ext_sym == EOS ) {
@@ -157,7 +159,7 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
         update.send();
 
     // redeem - SXCPU => EOS
-    } else if ( ext_sym == SXCPU ) {
+    } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
         // calculate retire
         const extended_asset out = calculate_retire( quantity );
         retire( { quantity, contract }, "retire" );
@@ -165,7 +167,7 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
 
         // update state
         state.balance -= out;
-        state.supply -= { quantity, contract };
+        state.supply.quantity -= quantity;
         _state.set( state, get_self() );
 
     } else {
@@ -180,10 +182,46 @@ void sx::push::add_strategy( const name strategy, const extended_asset value )
     auto insert = [&]( auto & row ) {
         row.strategy = strategy;
         row.last = current_time_point();
-        if ( row.balance.contract ) row.balance += value;
+        if ( row.balance.contract ) row.balance.quantity += value.quantity;
         else row.balance = value;
+        row.balance.contract = value.contract;
     };
     auto itr = _push.find( strategy.value );
     if ( itr == _push.end() ) _push.emplace( get_self(), insert );
     else _push.modify( itr, get_self(), insert );
+}
+
+// extended_asset sx::push::calculate_issue( const asset payment )
+// {
+//     sx::push::state_table _state( get_self(), get_self().value );
+//     auto state = _state.get();
+//     const int64_t ratio = 20;
+
+//     // initialize reward supply
+//     if ( state.supply.quantity.amount == 0 ) return { payment.amount / ratio, state.supply.get_extended_symbol() };
+
+//     // issue & redeem supply calculation
+//     // calculations based on fill REX order
+//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
+//     const int64_t S0 = state.balance.quantity.amount;
+//     const int64_t S1 = S0 + payment.amount;
+//     const int64_t R0 = state.supply.quantity.amount;
+//     const int64_t R1 = (uint128_t(S1) * R0) / S0;
+
+//     return { R1 - R0, state.supply.get_extended_symbol() };
+// }
+
+extended_asset sx::push::calculate_retire( const asset payment )
+{
+    sx::push::state_table _state( get_self(), get_self().value );
+    auto state = _state.get();
+
+    // issue & redeem supply calculation
+    // calculations based on add to REX pool
+    // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L772
+    const int64_t S0 = state.balance.quantity.amount;
+    const int64_t R0 = state.supply.quantity.amount;
+    const int64_t p  = (uint128_t(payment.amount) * S0) / R0;
+
+    return { p, state.balance.get_extended_symbol() };
 }

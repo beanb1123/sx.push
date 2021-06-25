@@ -41,11 +41,10 @@ void token::issue( const name& to, const asset& quantity, const string& memo )
     check( quantity.amount > 0, "must issue positive quantity" );
 
     check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
-   //  check( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
+    check( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
 
     statstable.modify( st, same_payer, [&]( auto& s ) {
        s.supply += quantity;
-       s.max_supply = s.supply;
     });
 
     add_balance( st.issuer, quantity, st.issuer );
@@ -70,7 +69,6 @@ void token::retire( const asset& quantity, const string& memo )
 
     statstable.modify( st, same_payer, [&]( auto& s ) {
        s.supply -= quantity;
-       s.max_supply = s.supply;
     });
 
     sub_balance( st.issuer, quantity );
