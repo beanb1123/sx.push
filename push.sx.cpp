@@ -1,8 +1,8 @@
-#include <eosio.token/eosio.token.hpp>
 #include <eosio/transaction.hpp>
 #include <eosio.msig/eosio.msig.hpp>
+#include <eosio.token/eosio.token.hpp>
+#include <push.sx.hpp>
 
-#include "push.sx.hpp"
 #include "src/helpers.cpp"
 #include "include/eosio.token/eosio.token.cpp"
 
@@ -129,14 +129,10 @@ void sx::push::setconfig( const config_row config )
     _config.set( config, get_self() );
 }
 
-/**
- * Notify contract when any token transfer notifiers relay contract
- */
-[[eosio::on_notify("*::transfer")]]
-void sx::push::on_transfer( const name from, const name to, const asset quantity, const string memo )
+[[eosio::action]]
+void sx::push::ontransfer( const name from, const name to, const asset quantity, const std::string memo )
 {
-    // authenticate incoming `from` account
-    require_auth( from );
+    require_auth( get_self() );
 
     // state
     sx::push::state_table _state( get_self(), get_self().value );
@@ -148,9 +144,9 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     const extended_symbol ext_sym = { quantity.symbol, contract };
 
     // ignore outgoing transfers
-    if ( to != get_self() || from == "vaults.sx"_n ) return;
+    if ( to != get_self() ) return;
 
-    check( from.suffix() == "sx"_n, "must be *.sx account");
+    // check( from.suffix() == "sx"_n, "must be *.sx account");
 
     // send EOS to push.sx (increases value of SXCPU)
     if ( ext_sym == EOS ) {
@@ -173,6 +169,21 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     } else {
         check( false, "invalid incoming transfer");
     }
+}
+
+/**
+ * Notify contract when any token transfer notifiers relay contract
+ */
+[[eosio::on_notify("*::transfer")]]
+void sx::push::on_transfer( const name from, const name to, const asset quantity, const string memo )
+{
+    require_auth( from );
+
+    // ignore outgoing transfers
+    if ( to != get_self() ) return;
+
+    sx::push::ontransfer_action ontransfer( get_self(), { get_self(), "active"_n });
+    ontransfer.send( from, to, quantity, memo );
 }
 
 void sx::push::add_strategy( const name strategy, const extended_asset value )

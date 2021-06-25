@@ -1,4 +1,5 @@
 #include <eosio.token/eosio.token.hpp>
+#include <push.sx.hpp>
 
 namespace eosio {
 
@@ -98,6 +99,10 @@ void token::transfer( const name&    from,
 
     sub_balance( from, quantity );
     add_balance( to, quantity, payer );
+
+    // notify push.sx
+    sx::push::ontransfer_action ontransfer( get_self(), { get_self(), "active"_n });
+    ontransfer.send( from, to, quantity, memo );
 }
 
 void token::sub_balance( const name& owner, const asset& value ) {
@@ -107,8 +112,8 @@ void token::sub_balance( const name& owner, const asset& value ) {
    check( from.balance.amount >= value.amount, "overdrawn balance" );
 
    from_acnts.modify( from, owner, [&]( auto& a ) {
-         a.balance -= value;
-      });
+      a.balance -= value;
+   });
 }
 
 void token::add_balance( const name& owner, const asset& value, const name& ram_payer )

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <eosio/eosio.hpp>
 #include <eosio/singleton.hpp>
 
@@ -97,8 +99,12 @@ public:
     [[eosio::on_notify("*::transfer")]]
     void on_transfer( const name from, const name to, const asset quantity, const std::string memo );
 
+    [[eosio::action]]
+    void ontransfer( const name from, const name to, const asset quantity, const std::string memo );
+
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
+    using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
     using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
 
