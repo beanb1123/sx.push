@@ -7,6 +7,12 @@
 #include "include/eosio.token/eosio.token.cpp"
 
 [[eosio::action]]
+void sx::push::test()
+{
+    print('pass');
+}
+
+[[eosio::action]]
 void sx::push::mine( const name executor, const uint64_t nonce )
 {
     require_auth( executor );
@@ -58,7 +64,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         // 2. First transaction
         // 3. 500ms interval
         if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-            strategy = "null.sx"_n;
+            strategy = "eosio.null"_n;
         } else {
             strategy = "basic.sx"_n;
             // strategy = "hft.sx"_n;

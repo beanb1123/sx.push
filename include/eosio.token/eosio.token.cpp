@@ -24,7 +24,6 @@ void token::create( const name&   issuer,
     });
 }
 
-
 void token::issue( const name& to, const asset& quantity, const string& memo )
 {
     auto sym = quantity.symbol;

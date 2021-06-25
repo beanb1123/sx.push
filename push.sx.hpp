@@ -10,6 +10,7 @@ static constexpr extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
 static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
 
 namespace sx {
+
 class [[eosio::contract("push.sx")]] push : public contract {
 public:
     using contract::contract;
@@ -91,6 +92,9 @@ public:
     void setconfig( const config_row config );
 
     [[eosio::action]]
+    void test();
+
+    [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     /**
@@ -134,4 +138,5 @@ private:
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const extended_asset value );
 };
+
 }
