@@ -1,10 +1,10 @@
-#include <sx.swap/swap.sx.hpp>
 #include <eosio.token/eosio.token.hpp>
 #include <eosio/transaction.hpp>
 #include <eosio.msig/eosio.msig.hpp>
 
 #include "push.sx.hpp"
 #include "src/helpers.cpp"
+#include "include/eosio.token/eosio.token.cpp"
 
 [[eosio::action]]
 void sx::push::mine( const name executor, const uint64_t nonce )
@@ -86,23 +86,12 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     _state.set(state, get_self());
 
     // deduct strategy balance
-    add_balance( strategy, -out );
+    add_strategy( strategy, -out );
 
     // logging
     sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
     pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
-
-// [[eosio::action]]
-// void sx::push::exec2()
-// {
-//     require_auth( get_self() );
-
-//     // exec( "eosnationftw"_n, "transfersafe"_n );
-
-//     eosio::msig::exec_action exec( "eosio.msig"_n, { get_self(), "active"_n });
-//     exec.send( "eosnationftw"_n, "transfersafe"_n, get_self() );
-// }
 
 [[eosio::action]]
 void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
@@ -119,8 +108,8 @@ void sx::push::update()
 
     sx::push::state_table _state( get_self(), get_self().value );
     auto state = _state.get_or_default();
-    state.balance = { eosio::token::get_balance( "eosio.token"_n, get_self(), symbol_code{"EOS"} ), "eosio.token"_n };
-    state.supply = { eosio::token::get_supply( "token.sx"_n, symbol_code{"SXCPU"} ), "token.sx"_n };
+    state.balance = token::get_balance( EOS, get_self() );
+    state.supply = token::get_supply( SXCPU );
     _state.set( state, get_self() );
 }
 
@@ -184,7 +173,7 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     }
 }
 
-void sx::push::add_balance( const name strategy, const extended_asset value )
+void sx::push::add_strategy( const name strategy, const extended_asset value )
 {
     sx::push::push_table _push( get_self(), get_self().value );
 

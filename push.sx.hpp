@@ -1,8 +1,10 @@
 #include <eosio/eosio.hpp>
+#include <eosio/singleton.hpp>
 
 using namespace eosio;
 
 static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "token.sx"_n };
+static constexpr extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
 static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
 
 namespace sx {
@@ -89,9 +91,6 @@ public:
     [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
-    // [[eosio::action]]
-    // void exec2();
-
     /**
      * Notify contract when any token transfer notifiers relay contract
      */
@@ -127,6 +126,6 @@ private:
     };
 
     void exec( const name proposer, const name proposal_name );
-    void add_balance( const name strategy, const extended_asset value );
+    void add_strategy( const name strategy, const extended_asset value );
 };
 }
