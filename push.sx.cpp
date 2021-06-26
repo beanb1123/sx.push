@@ -159,11 +159,6 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
 
 void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
-    // state
-    sx::push::state_table _state( get_self(), get_self().value );
-    check( _state.exists(), "contract is under maintenance");
-    auto state = _state.get();
-
     // helpers
     const asset quantity = ext_quantity.quantity;
     const name contract = ext_quantity.contract;
@@ -188,6 +183,10 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
         transfer( get_self(), from, out, get_self().to_string() );
 
         // update state
+        sx::push::state_table _state( get_self(), get_self().value );
+        check( _state.exists(), "contract is under maintenance");
+        auto state = _state.get();
+
         state.balance -= out;
         state.supply.quantity -= quantity;
         _state.set( state, get_self() );

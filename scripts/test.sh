@@ -17,4 +17,4 @@ cleos push action push.sx mine '["myaccount", 456]' -p myaccount
 cleos push action push.sx mine '["myaccount", 789]' -p myaccount
 
 # redeem
-cleos transfer myaccount push.sx "1 SXCPU" --contract token.sx
+cleos transfer myaccount push.sx "1 SXCPU" --contract push.sx
