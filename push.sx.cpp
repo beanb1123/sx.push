@@ -64,7 +64,7 @@ void sx::push::mine( const name executor, const uint64_t nonce )
         // 2. First transaction
         // 3. 500ms interval
         if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-            strategy = "eosio.null"_n;
+            strategy = "null.sx"_n;
         } else {
             strategy = "basic.sx"_n;
             // strategy = "hft.sx"_n;
@@ -136,18 +136,38 @@ void sx::push::setconfig( const config_row config )
 }
 
 [[eosio::action]]
-void sx::push::ontransfer( const name from, const name to, const asset quantity, const std::string memo )
+void sx::push::ontransfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
     require_auth( get_self() );
 
+    handle_transfer( from, to, ext_quantity, memo );
+}
+
+/**
+ * Notify contract when any token transfer notifiers relay contract
+ */
+[[eosio::on_notify("*::transfer")]]
+void sx::push::on_transfer( const name from, const name to, const asset quantity, const string memo )
+{
+    require_auth( from );
+
+    // ignore outgoing transfers
+    if ( to != get_self() ) return;
+
+    handle_transfer( from, to, extended_asset{ quantity, get_first_receiver() }, memo );
+}
+
+void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
+{
     // state
     sx::push::state_table _state( get_self(), get_self().value );
     check( _state.exists(), "contract is under maintenance");
     auto state = _state.get();
 
     // helpers
-    const name contract = get_first_receiver();
-    const extended_symbol ext_sym = { quantity.symbol, contract };
+    const asset quantity = ext_quantity.quantity;
+    const name contract = ext_quantity.contract;
+    const extended_symbol ext_sym = { ext_quantity.quantity.symbol, contract };
 
     // ignore outgoing transfers
     if ( to != get_self() ) return;
@@ -164,7 +184,7 @@ void sx::push::ontransfer( const name from, const name to, const asset quantity,
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
         // calculate retire
         const extended_asset out = calculate_retire( quantity );
-        retire( { quantity, contract }, "retire" );
+        retire( ext_quantity, "retire" );
         transfer( get_self(), from, out, get_self().to_string() );
 
         // update state
@@ -173,23 +193,8 @@ void sx::push::ontransfer( const name from, const name to, const asset quantity,
         _state.set( state, get_self() );
 
     } else {
-        check( false, "invalid incoming transfer");
+        check( false, from.to_string() + ":" + to.to_string() + ":" + contract.to_string() + quantity.to_string() + "invalid incoming transfer");
     }
-}
-
-/**
- * Notify contract when any token transfer notifiers relay contract
- */
-[[eosio::on_notify("*::transfer")]]
-void sx::push::on_transfer( const name from, const name to, const asset quantity, const string memo )
-{
-    require_auth( from );
-
-    // ignore outgoing transfers
-    if ( to != get_self() ) return;
-
-    sx::push::ontransfer_action ontransfer( get_self(), { get_self(), "active"_n });
-    ontransfer.send( from, to, quantity, memo );
 }
 
 void sx::push::add_strategy( const name strategy, const extended_asset value )

@@ -104,7 +104,7 @@ public:
     void on_transfer( const name from, const name to, const asset quantity, const std::string memo );
 
     [[eosio::action]]
-    void ontransfer( const name from, const name to, const asset quantity, const std::string memo );
+    void ontransfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
 
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
@@ -119,6 +119,7 @@ private:
     void issue( const extended_asset value, const string memo );
 
     // issue/redeem SXCPU
+    void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
     extended_asset calculate_retire( const asset payment );
     // extended_asset calculate_issue( const asset payment );
 

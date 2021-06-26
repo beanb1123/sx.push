@@ -101,7 +101,7 @@ void token::transfer( const name&    from,
 
     // notify push.sx
     sx::push::ontransfer_action ontransfer( get_self(), { get_self(), "active"_n });
-    ontransfer.send( from, to, quantity, memo );
+    ontransfer.send( from, to, extended_asset{ quantity, get_self() }, memo );
 }
 
 void token::sub_balance( const name& owner, const asset& value ) {
