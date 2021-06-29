@@ -57,6 +57,9 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     } else if ( nonce == 4 || random == 4 ) {
         strategy = "unpack.gems"_n;
 
+    } else if ( nonce == 5 || random == 5 ) {
+        strategy = "proxy4nation"_n;
+
     // 25% load first-in block transaction
     } else if ( random % RATIO_SPLIT == 0 ) {
         // first transaction is null (or oracle when implemented)
@@ -67,7 +70,6 @@ void sx::push::mine( const name executor, const uint64_t nonce )
             strategy = "null.sx"_n;
         } else {
             strategy = "basic.sx"_n;
-            // strategy = "hft.sx"_n;
         }
     // 75% fallback
     } else {
