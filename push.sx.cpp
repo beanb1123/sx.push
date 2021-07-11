@@ -48,8 +48,8 @@ void sx::push::mine( const name executor, const uint64_t nonce )
     if ( nonce == 1 || random == 1 ) {
         strategy = "fee.sx"_n;
 
-    // } else if ( nonce == 2 || random == 2 ) {
-    //     strategy = "eusd.sx"_n;
+    } else if ( nonce == 2 || random == 2 ) {
+        strategy = "atomichub.sx"_n;
 
     } else if ( nonce == 3 || random == 3 ) {
         strategy = "eosnationftw"_n;
@@ -59,6 +59,9 @@ void sx::push::mine( const name executor, const uint64_t nonce )
 
     } else if ( nonce == 5 || random == 5 ) {
         strategy = "proxy4nation"_n;
+
+    } else if ( nonce == 6 || random == 6 ) {
+        strategy = "eosnationdsp"_n;
 
     // 25% load first-in block transaction
     } else if ( random % RATIO_SPLIT == 0 ) {
