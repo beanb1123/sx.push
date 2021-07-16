@@ -83,7 +83,7 @@ public:
      * ```
      */
     [[eosio::action]]
-    void mine( const name executor, const uint64_t nonce );
+    void mine( const name executor, uint64_t nonce );
 
     [[eosio::action]]
     void update();
