@@ -40,40 +40,35 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // salt numbers
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
-    nonce = (nonce ? nonce : block_num) % 10000; //if supplied nonce==0 - generate it(for command line test)
-
-    // // random number
-    // const vector<uint64_t> nonces = {123, 345, 227, 992, 213, 455, 123, 550, 100};
-    // const uint64_t salt = nonces[ state.total % nonces.size() ];
-    // const uint64_t random = (salt + milliseconds / 500 + executor.value + nonce) % 1000;
+    const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
     // strategy dispatch
     name strategy;
-    if ( nonce == 1 ) {
+    if ( nonce == 1 || random == 1 ) {
         strategy = "fee.sx"_n;
 
-    } else if ( nonce == 2 ) {
+    } else if ( nonce == 2 || random == 2 ) {
         strategy = "atomichub.sx"_n;
 
-    } else if ( nonce == 3 ) {
+    } else if ( nonce == 3 || random == 3 ) {
         strategy = "eosnationftw"_n;
 
-    } else if ( nonce == 4 ) {
+    } else if ( nonce == 4 || random == 4 ) {
         strategy = "unpack.gems"_n;
 
-    } else if ( nonce == 5 ) {
+    } else if ( nonce == 5 || random == 5 ) {
         strategy = "proxy4nation"_n;
 
-    } else if ( nonce == 6 ) {
+    } else if ( nonce == 6 || random == 6 ) {
         strategy = "eosnationdsp"_n;
 
     // 25% load first-in block transaction
-    } else if ( nonce % RATIO_SPLIT == 0 ) {
+    } else if ( random % RATIO_SPLIT == 0 ) {
         // first transaction is null (or oracle when implemented)
         // 1. Frequency 1/4
         // 2. First transaction
         // 3. 500ms interval
-        if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && nonce % RATIO_FREQUENCY == 0 ) {
+        if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
             strategy = "null.sx"_n;
         } else {
             strategy = "basic.sx"_n;
