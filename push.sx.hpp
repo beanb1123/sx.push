@@ -129,7 +129,7 @@ private:
     // issue/redeem SXCPU
     void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
     extended_asset calculate_retire( const asset payment );
-    // extended_asset calculate_issue( const asset payment );
+    int64_t calculate_issue( const int64_t payment );
 
     name get_first_authorizer( const name executor ) {
         char tx_buffer[eosio::transaction_size()];

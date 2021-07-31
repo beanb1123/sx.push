@@ -1,6 +1,7 @@
 #include <eosio/transaction.hpp>
 #include <eosio.msig/eosio.msig.hpp>
 #include <eosio.token/eosio.token.hpp>
+#include <sx.utils/utils.hpp>
 #include <push.sx.hpp>
 
 #include "src/helpers.cpp"
@@ -180,7 +181,7 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     // tables
     sx::push::config_table _config( get_self(), get_self().value );
     sx::push::state_table _state( get_self(), get_self().value );
-    check( _state.exists(), "push::handle_transfer: contract is under maintenance");
+    sx::push::strategies_table _strategies( get_self(), get_self().value );
     check( _state.exists(), "push::handle_transfer: contract is under maintenance");
     auto config = _config.get();
     auto state = _state.get();
@@ -196,8 +197,12 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     // send EOS/WAX to push.sx (increases value of SXCPU)
     if ( ext_sym == config.ext_sym ) {
         check( from.suffix() == "sx"_n, "push::handle_transfer: invalid account");
-        sx::push::update_action update( get_self(), { get_self(), "active"_n });
-        update.send();
+        const int64_t payment = calculate_issue( ext_quantity.quantity.amount );
+        const name strategy = from == "fee.sx"_n ? "null.sx"_n : sx::utils::parse_name( memo );
+        check( _strategies.find( strategy.value ) != _strategies.end(), "push::handle_transfer: invalid strategy");
+        add_strategy( strategy, payment );
+        state.balance += ext_quantity;
+        _state.set( state, get_self() );
 
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
@@ -235,31 +240,32 @@ void sx::push::add_strategy( const name strategy, const int64_t amount, const na
         row.balance.quantity.symbol = SXCPU.get_symbol();
         row.balance.quantity.amount += amount;
         if ( type.value ) row.type = type;
+        if ( !row.type.value ) row.type = "secondary"_n;
     };
     auto itr = _strategies.find( strategy.value );
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
     else _strategies.modify( itr, get_self(), insert );
 }
 
-// extended_asset sx::push::calculate_issue( const asset payment )
-// {
-//     sx::push::state_table _state( get_self(), get_self().value );
-//     auto state = _state.get();
-//     const int64_t ratio = 20;
+int64_t sx::push::calculate_issue( const int64_t payment )
+{
+    sx::push::state_table _state( get_self(), get_self().value );
+    auto state = _state.get();
 
-//     // initialize reward supply
-//     if ( state.supply.quantity.amount == 0 ) return { payment.amount / ratio, state.supply.get_extended_symbol() };
+    // initialize reward supply (0.0001 EOS / 0.00010000 WAX)
+    const int64_t ratio = 1'0000;
+    if ( state.supply.quantity.amount == 0 ) return payment / ratio;
 
-//     // issue & redeem supply calculation
-//     // calculations based on fill REX order
-//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
-//     const int64_t S0 = state.balance.quantity.amount;
-//     const int64_t S1 = S0 + payment.amount;
-//     const int64_t R0 = state.supply.quantity.amount;
-//     const int64_t R1 = (uint128_t(S1) * R0) / S0;
+    // issue & redeem supply calculation
+    // calculations based on fill REX order
+    // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
+    const int64_t S0 = state.balance.quantity.amount;
+    const int64_t S1 = S0 + payment;
+    const int64_t R0 = state.supply.quantity.amount;
+    const int64_t R1 = (uint128_t(S1) * R0) / S0;
 
-//     return { R1 - R0, state.supply.get_extended_symbol() };
-// }
+    return R1 - R0;
+}
 
 extended_asset sx::push::calculate_retire( const asset payment )
 {
