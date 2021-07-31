@@ -1,3 +1,15 @@
+template <typename T>
+bool sx::push::erase_table( T& table )
+{
+    auto itr = table.begin();
+    bool erased = false;
+    while ( itr != table.end() ) {
+        itr = table.erase( itr );
+        erased = true;
+    }
+    return erased;
+}
+
 void sx::push::issue( const extended_asset value, const string memo )
 {
     eosio::token::issue_action issue( value.contract, { get_self(), "active"_n });

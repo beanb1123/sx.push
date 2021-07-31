@@ -8,6 +8,7 @@ using namespace eosio;
 static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "push.sx"_n };
 static constexpr extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
 static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
+static constexpr extended_symbol WAX{{"WAX", 8}, "eosio.token"_n };
 
 namespace sx {
 
@@ -47,22 +48,26 @@ public:
         uint64_t            split = 4; // split (25/75)
         uint64_t            frequency = 20; // frequency (1/20)
         uint64_t            interval = 2500; // 2500ms interval time
+        extended_symbol     ext_sym = EOS;
     };
     typedef eosio::singleton< "config"_n, config_row > config_table;
 
     struct [[eosio::table("strategies")]] strategies_row {
         name            strategy;
+        name            type;
         time_point      last;
         extended_asset  balance;
 
         uint64_t primary_key() const { return strategy.value; }
-        uint64_t bylast() const { return last.sec_since_epoch(); }
-        uint64_t bybalance() const { return balance.quantity.amount; }
+        uint64_t by_type() const { return type.value; }
+        uint64_t by_last() const { return last.sec_since_epoch(); }
+        uint64_t by_balance() const { return balance.quantity.amount; }
     };
     typedef eosio::multi_index< "strategies"_n, strategies_row,
-        indexed_by< "bylast"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::bylast> >,
-        indexed_by< "bybalance"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::bybalance> >
-    > push_table;
+        indexed_by< "bytype"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_type> >,
+        indexed_by< "bylast"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_last> >,
+        indexed_by< "bybalance"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_balance> >
+    > strategies_table;
 
     /**
      * ## ACTION `push`
@@ -92,10 +97,13 @@ public:
     void setconfig( const config_row config );
 
     [[eosio::action]]
-    void test();
+    void setstrategy( const name strategy, const optional<name> type );
 
     [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+
+    [[eosio::action]]
+    void reset( const name table );
 
     /**
      * Notify contract when any token transfer notifiers relay contract
@@ -137,7 +145,10 @@ private:
     };
 
     void exec( const name proposer, const name proposal_name );
-    void add_strategy( const name strategy, const extended_asset value );
+    void add_strategy( const name strategy, const int64_t amount, const name type = ""_n );
+
+    template <typename T>
+    bool erase_table( T& table );
 };
 
 }
