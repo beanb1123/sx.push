@@ -51,12 +51,9 @@ void sx::push::mine( const name executor, uint64_t nonce )
     while ( lower != upper ) {
         if ( !lower->strategy ) break;
         secondaries.push_back( lower->strategy );
-        print( lower->strategy, "\n" );
         lower++;
     }
-    const uint64_t size = secondaries.size();
-    print( "count: " + to_string( secondaries.size()) );
-
+    const uint64_t size = secondaries.size() - 1;
     if ( nonce <= size ) {
         strategy = secondaries[nonce];
 
