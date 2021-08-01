@@ -13,15 +13,15 @@ void token::create( const name&   issuer,
     check( maximum_supply.is_valid(), "invalid supply");
     check( maximum_supply.amount > 0, "max-supply must be positive");
 
-    stats statstable( get_self(), sym.code().raw() );
-    auto existing = statstable.find( sym.code().raw() );
-    check( existing == statstable.end(), "token with symbol already exists" );
-
-    statstable.emplace( get_self(), [&]( auto& s ) {
-       s.supply.symbol = maximum_supply.symbol;
-       s.max_supply    = maximum_supply;
-       s.issuer        = issuer;
-    });
+    auto insert = [&]( auto & row ) {
+        row.supply.symbol = maximum_supply.symbol;
+        row.max_supply    = maximum_supply;
+        row.issuer        = issuer;
+    };
+    stats _stats( get_self(), sym.code().raw() );
+    auto itr = _stats.find( sym.code().raw() );
+    if ( itr == _stats.end() ) _stats.emplace( get_self(), insert );
+    else _stats.modify( itr, get_self(), insert );
 }
 
 void token::issue( const name& to, const asset& quantity, const string& memo )

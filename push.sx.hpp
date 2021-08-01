@@ -48,7 +48,7 @@ public:
         uint64_t            split = 4; // split (25/75)
         uint64_t            frequency = 20; // frequency (1/20)
         uint64_t            interval = 2500; // 2500ms interval time
-        extended_symbol     ext_sym = EOS;
+        extended_symbol     ext_sym;
     };
     typedef eosio::singleton< "config"_n, config_row > config_table;
 
@@ -105,6 +105,9 @@ public:
     [[eosio::action]]
     void reset( const name table );
 
+    [[eosio::action]]
+    void deposit( const name from, const name strategy, const extended_asset payment, const extended_asset deposit );
+
     /**
      * Notify contract when any token transfer notifiers relay contract
      */
@@ -119,6 +122,7 @@ public:
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
     using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+    using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
 
 private:
     // eosio.token helper
@@ -127,9 +131,14 @@ private:
     void issue( const extended_asset value, const string memo );
 
     // issue/redeem SXCPU
+    name get_strategy( const name type, const bool required = false );
+    vector<name> get_strategies( const name type );
+
     void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
     extended_asset calculate_retire( const asset payment );
-    int64_t calculate_issue( const int64_t payment );
+    int64_t calculate_issue( const extended_asset payment );
+
+    // extended_symbol get_SXCPU();
 
     name get_first_authorizer( const name executor ) {
         char tx_buffer[eosio::transaction_size()];
