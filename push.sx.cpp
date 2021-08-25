@@ -73,8 +73,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
         // 3. 500ms interval
         if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
             strategy = strategy_default;
-            // RATE = RATIO_INTERVAL * 20;
-            RATE = 2500;
+            RATE = RATIO_INTERVAL * 20;
+            // RATE = 2500;
         } else {
             strategy = strategy_main;
         }
