@@ -2,15 +2,26 @@
 #include <eosio.msig/eosio.msig.hpp>
 #include <eosio.token/eosio.token.hpp>
 #include <sx.utils/sx.utils.hpp>
+#include <gems.random/random.gems.hpp>
 #include <push.sx.hpp>
 
 #include "src/helpers.cpp"
 #include "include/eosio.token/eosio.token.cpp"
 
 [[eosio::action]]
-void sx::push::mine( const name executor, uint64_t nonce )
+void sx::push::mine2( const name executor, const checksum256 digest )
 {
     require_auth( executor );
+
+    sx::push::mine_action mine( get_self(), { get_self(), "active"_n });
+    const vector<int64_t> nonces = gems::random::generate( 1, digest );
+    mine.send( executor, nonces[0] );
+}
+
+[[eosio::action]]
+void sx::push::mine( const name executor, uint64_t nonce )
+{
+    if ( !has_auth( get_self() ) ) require_auth( executor );
 
     // check( false, "disabled");
 
@@ -240,21 +251,21 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     if ( ext_sym == config.ext_sym ) {
         // handle deposit to strategy
         check( from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx");
-        name strategy = sx::utils::parse_name( memo );
-        if ( from == "fee.sx"_n && memo == "fee.sx" ) strategy = "null.sx"_n;
-        else if ( !strategy.value ) strategy = from;
-        check( _strategies.find( strategy.value ) != _strategies.end(), "push::handle_transfer: [strategy=" + strategy.to_string() + "] is invalid");
+        // name strategy = sx::utils::parse_name( memo );
+        // if ( from == "fee.sx"_n && memo == "fee.sx" ) strategy = "null.sx"_n;
+        // else if ( !strategy.value ) strategy = from;
+        // check( _strategies.find( strategy.value ) != _strategies.end(), "push::handle_transfer: [strategy=" + strategy.to_string() + "] is invalid");
 
-        // handling incoming payment
-        int64_t payment = calculate_issue( ext_quantity );
-        // if ( config.ext_sym == WAX ) payment *= 10000;
-        add_strategy( strategy, payment );
+        // // handling incoming payment
+        // int64_t payment = calculate_issue( ext_quantity );
+        // // if ( config.ext_sym == WAX ) payment *= 10000;
+        // add_strategy( strategy, payment );
         state.balance += ext_quantity;
         _state.set( state, get_self() );
 
-        // log deposit
-        sx::push::deposit_action deposit( get_self(), { get_self(), "active"_n });
-        deposit.send( from, strategy, ext_quantity, extended_asset{ payment, SXCPU } );
+        // // log deposit
+        // sx::push::deposit_action deposit( get_self(), { get_self(), "active"_n });
+        // deposit.send( from, strategy, ext_quantity, extended_asset{ payment, SXCPU } );
 
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
@@ -303,7 +314,7 @@ void sx::push::add_strategy( const name strategy, const int64_t amount, const na
         row.balance.quantity.amount += amount;
         if ( type.value ) row.type = type;
         if ( !row.type.value ) row.type = "secondary"_n;
-        if ( amount < 0 ) check( row.balance.quantity.amount > 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
+        // if ( amount < 0 ) check( row.balance.quantity.amount > 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
     };
     auto itr = _strategies.find( strategy.value );
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );

@@ -91,6 +91,9 @@ public:
     void mine( const name executor, uint64_t nonce );
 
     [[eosio::action]]
+    void mine2( const name executor, const checksum256 digest );
+
+    [[eosio::action]]
     void update();
 
     [[eosio::action]]
