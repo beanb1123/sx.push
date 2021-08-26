@@ -42,7 +42,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t RATIO_SPLIT = config.split; // split (25/75)
     const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
     const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
-    int64_t RATE = 10000; // 1.0000 SXCPU base rate
+    int64_t RATE = 20'0000; // 20.0000 SXCPU base rate
 
     // salt numbers
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
@@ -73,8 +73,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
         // 3. 500ms interval
         if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
             strategy = strategy_default;
-            RATE = RATIO_INTERVAL * 20;
-            // RATE = 2500;
+            RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
         } else {
             strategy = strategy_main;
         }
