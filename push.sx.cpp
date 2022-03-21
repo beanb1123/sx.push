@@ -86,7 +86,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const string msg = "push::mine: invalid [strategy=" + strategy.to_string() + "]" + to_string(size) + " - " + strategy_main.to_string() + " - " + to_string(strategy_default.value) + " - " + strategy_fallback.to_string();
     check( strategy.value, msg);
     check( is_account(strategy), msg);
-    require_recipient( strategy );
+    if ( strategy != "null.sx"_n) require_recipient( strategy );
 
     // mine SXCPU per action
     // const extended_symbol SXCPU = get_SXCPU();
@@ -95,17 +95,20 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const name to = first_authorizer == "miner.sx"_n ? "miner.sx"_n : executor;
 
     // issue mining
-    issue( out, "mine" );
-    transfer( get_self(), to, out, get_self().to_string() );
+    // issue( out, "mine" );
+    // transfer( get_self(), to, out, get_self().to_string() );
     state.supply.quantity += out.quantity;
     _state.set(state, get_self());
 
     // deduct strategy balance
     add_strategy( strategy, -RATE );
 
-    // logging
-    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    pushlog.send( executor, first_authorizer, strategy, out.quantity );
+    // silent claim to owner
+    add_claim( to, out );
+
+    // // logging
+    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    // pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
 
 // extended_symbol sx::push::get_SXCPU()
@@ -298,10 +301,45 @@ void sx::push::setstrategy( const name strategy, const optional<name> type )
     }
 }
 
+[[eosio::action]]
+void sx::push::claim( const name owner )
+{
+    require_auth( owner );
+
+    sx::push::claims_table _claims( get_self(), get_self().value );
+    auto & itr = _claims.get( owner.value, "push::claim: [owner] not found");
+    check( itr.balance.quantity.amount > 0, "push::claim: [owner] has no balance");
+
+    // issue transfer
+    issue( itr.balance, "claim" );
+    transfer( get_self(), owner, itr.balance, "claim" );
+    _claims.erase( itr );
+
+    // logging
+    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    pushlog.send( owner, owner, get_self(), itr.balance.quantity );
+}
+
+void sx::push::add_claim( const name owner, const extended_asset claim )
+{
+    claims_table _claims( get_self(), get_self().value );
+
+    auto insert = [&]( auto & row ) {
+        row.owner = owner;
+        row.updated_at = current_time_point();
+        row.balance.contract = SXCPU.get_contract();
+        row.balance.quantity.symbol = SXCPU.get_symbol();
+        row.balance += claim;
+    };
+    auto itr = _claims.find( owner.value );
+    if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
+    else _claims.modify( itr, get_self(), insert );
+}
+
 void sx::push::add_strategy( const name strategy, const int64_t amount, const name type )
 {
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
-    sx::push::config_table _config( get_self(), get_self().value );
+    strategies_table _strategies( get_self(), get_self().value );
+    config_table _config( get_self(), get_self().value );
     auto config = _config.get_or_default();
     // const extended_symbol SXCPU = get_SXCPU();
 

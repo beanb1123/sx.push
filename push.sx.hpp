@@ -52,6 +52,15 @@ public:
     };
     typedef eosio::singleton< "config"_n, config_row > config_table;
 
+    struct [[eosio::table("claims")]] claims_row {
+        name            owner;
+        time_point      updated_at;
+        extended_asset  balance;
+
+        uint64_t primary_key() const { return owner.value; }
+    };
+    typedef eosio::multi_index< "claims"_n, claims_row> claims_table;
+
     struct [[eosio::table("strategies")]] strategies_row {
         name            strategy;
         name            type;
@@ -104,6 +113,9 @@ public:
 
     [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+
+    [[eosio::action]]
+    void claim( const name owner );
 
     [[eosio::action]]
     void reset( const name table );
@@ -159,6 +171,7 @@ private:
 
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const int64_t amount, const name type = ""_n );
+    void add_claim( const name owner, const extended_asset claim );
 
     template <typename T>
     bool erase_table( T& table );
