@@ -106,6 +106,9 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // silent claim to owner
     add_claim( to, out );
 
+    // claim after 1 hour passed
+    hourly_claim( to );
+
     // // logging
     // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
     // pushlog.send( executor, first_authorizer, strategy, out.quantity );
@@ -149,6 +152,13 @@ void sx::push::pushlog( const name executor, const name first_authorizer, const 
     require_auth( get_self() );
     if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
     if ( is_account("stats.sx"_n) ) require_recipient( "stats.sx"_n );
+}
+
+[[eosio::action]]
+void sx::push::claimlog( const name owner, const asset balance )
+{
+    require_auth( get_self() );
+    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
 }
 
 [[eosio::action]]
@@ -318,6 +328,9 @@ void sx::push::claim( const name owner )
     // logging
     sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
     pushlog.send( owner, owner, get_self(), itr.balance.quantity );
+
+    sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+    claimlog.send( owner, itr.balance.quantity );
 }
 
 void sx::push::add_claim( const name owner, const extended_asset claim )
@@ -326,7 +339,7 @@ void sx::push::add_claim( const name owner, const extended_asset claim )
 
     auto insert = [&]( auto & row ) {
         row.owner = owner;
-        row.updated_at = current_time_point();
+        if ( !row.created_at.sec_since_epoch() ) row.created_at = current_time_point();
         row.balance.contract = SXCPU.get_contract();
         row.balance.quantity.symbol = SXCPU.get_symbol();
         row.balance += claim;
@@ -334,6 +347,23 @@ void sx::push::add_claim( const name owner, const extended_asset claim )
     auto itr = _claims.find( owner.value );
     if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
     else _claims.modify( itr, get_self(), insert );
+}
+
+void sx::push::hourly_claim( const name owner )
+{
+    claims_table _claims( get_self(), get_self().value );
+    auto itr = _claims.find( owner.value );
+    if ( itr == _claims.end() ) return; // skip
+
+    const uint32_t now = current_time_point().sec_since_epoch();
+    const uint32_t created_at = itr->created_at.sec_since_epoch();
+    const uint32_t delta = now - created_at;
+    if ( delta < 60 ) return; // skip
+    print("owner: ", owner, "\n" );
+    print("delta: ", delta, "\n" );
+    print("created_at: ", created_at, "\n" );
+    print("now: ", now, "\n" );
+    claim( owner );
 }
 
 void sx::push::add_strategy( const name strategy, const int64_t amount, const name type )

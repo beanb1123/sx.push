@@ -54,7 +54,7 @@ public:
 
     struct [[eosio::table("claims")]] claims_row {
         name            owner;
-        time_point      updated_at;
+        time_point      created_at;
         extended_asset  balance;
 
         uint64_t primary_key() const { return owner.value; }
@@ -115,6 +115,9 @@ public:
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
+    void claimlog( const name owner, const asset balance );
+
+    [[eosio::action]]
     void claim( const name owner );
 
     [[eosio::action]]
@@ -138,6 +141,7 @@ public:
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
     using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+    using claimlog_action = eosio::action_wrapper<"claimlog"_n, &sx::push::claimlog>;
     using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
 
 private:
@@ -172,6 +176,7 @@ private:
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const int64_t amount, const name type = ""_n );
     void add_claim( const name owner, const extended_asset claim );
+    void hourly_claim( const name owner );
 
     template <typename T>
     bool erase_table( T& table );
