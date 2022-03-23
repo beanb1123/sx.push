@@ -314,7 +314,7 @@ void sx::push::setstrategy( const name strategy, const optional<name> type )
 [[eosio::action]]
 void sx::push::claim( const name owner )
 {
-    require_auth( owner );
+    if ( !has_auth( get_self() ) ) require_auth( owner );
 
     sx::push::claims_table _claims( get_self(), get_self().value );
     auto & itr = _claims.get( owner.value, "push::claim: [owner] not found");
