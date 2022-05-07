@@ -52,12 +52,14 @@ void sx::push::mine( const name executor, uint64_t nonce )
     name strategy_main = get_strategy( "main"_n, true );
     name strategy_default = get_strategy( "default"_n );
     name strategy_fallback = get_strategy( "fallback"_n );
+    name strategy_top = get_strategy( "top"_n );
     name strategy = strategy_main;
     if ( !strategy_fallback.value ) strategy_fallback = strategy_main;
 
     // secondary strategies
     const vector<name> secondaries = get_strategies( "secondary"_n );
     const int size = secondaries.size() - 1;
+    const int splitter = random % RATIO_SPLIT;
 
     if ( size > 0 && nonce <= size ) {
         strategy = secondaries[nonce];
@@ -65,8 +67,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
     } else if ( size > 0 && random <= size ) {
         strategy = secondaries[random];
 
-    // 25% load first-in block transaction
-    } else if ( random % RATIO_SPLIT == 0 ) {
+    // 1st split
+    } else if ( splitter == 0 ) {
         // first transaction is null (or oracle when implemented)
         // 1. Frequency 1/4
         // 2. First transaction
@@ -77,9 +79,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
         } else {
             strategy = strategy_main;
         }
-    // 75% fallback
-    } else {
+    // 2nd split
+    } else if ( splitter == 1 ) {
         strategy = strategy_fallback;
+    // majority
+    } else {
+        strategy = strategy_top;
     }
 
     // notify strategy
@@ -358,7 +363,7 @@ void sx::push::hourly_claim( const name owner )
     const uint32_t now = current_time_point().sec_since_epoch();
     const uint32_t created_at = itr->created_at.sec_since_epoch();
     const uint32_t delta = now - created_at;
-    if ( delta < 60 ) return; // skip
+    if ( delta < (owner.suffix() == "sx"_n ? 600 : 60) ) return; // skip
     print("owner: ", owner, "\n" );
     print("delta: ", delta, "\n" );
     print("created_at: ", created_at, "\n" );
