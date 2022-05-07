@@ -49,10 +49,10 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
     // main strategies
+    name strategy_top = get_strategy( "top"_n );
     name strategy_main = get_strategy( "main"_n, true );
     name strategy_default = get_strategy( "default"_n );
     name strategy_fallback = get_strategy( "fallback"_n );
-    name strategy_top = get_strategy( "top"_n );
     name strategy = strategy_main;
     if ( !strategy_fallback.value ) strategy_fallback = strategy_main;
 
@@ -77,14 +77,14 @@ void sx::push::mine( const name executor, uint64_t nonce )
             strategy = strategy_default;
             RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
         } else {
-            strategy = strategy_main;
+            strategy = strategy_top;
         }
     // 2nd split
     } else if ( splitter == 1 ) {
-        strategy = strategy_fallback;
+        strategy = strategy_main;
     // majority
     } else {
-        strategy = strategy_top;
+        strategy = strategy_fallback;
     }
 
     // notify strategy
