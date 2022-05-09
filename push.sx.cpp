@@ -77,11 +77,11 @@ void sx::push::mine( const name executor, uint64_t nonce )
             strategy = strategy_default;
             RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
         } else {
-            strategy = strategy_top;
+            strategy = strategy_main;
         }
     // 2nd split
     } else if ( splitter == 1 ) {
-        strategy = strategy_main;
+        strategy = strategy_top;
     // majority
     } else {
         strategy = strategy_fallback;
