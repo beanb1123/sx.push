@@ -69,19 +69,22 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // 1st split
     } else if ( splitter == 0 ) {
-        strategy = strategy_main;
-        // // first transaction is null (or oracle when implemented)
-        // // 1. Frequency 1/4
-        // // 2. First transaction
-        // // 3. 500ms interval
-        // if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-        //     strategy = strategy_default;
-        //     RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
-        // } else {
-        //     strategy = strategy_main;
-        // }
+        strategy = strategy_fallback;
+        // first transaction is null (or oracle when implemented)
+        // 1. Frequency 1/4
+        // 2. First transaction
+        // 3. 500ms interval
+        if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
+            strategy = strategy_default;
+            RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
+        } else {
+            // strategy = strategy_main;
+            strategy = strategy_fallback;
+        }
     // 2nd split
     } else if ( splitter == 1 ) {
+        strategy = strategy_main;
+    } else if ( splitter == 2 ) {
         strategy = strategy_top;
     // majority
     } else {
