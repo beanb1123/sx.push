@@ -48,13 +48,15 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
-    // main strategies
-    name strategy_top = get_strategy( "top"_n );
-    name strategy_main = get_strategy( "main"_n, true );
-    name strategy_default = get_strategy( "default"_n );
-    name strategy_fallback = get_strategy( "fallback"_n );
-    name strategy = strategy_main;
-    if ( !strategy_fallback.value ) strategy_fallback = strategy_main;
+    // // main strategies
+    // name strategy_top = get_strategy( "top"_n );
+    // name strategy_main = get_strategy( "main"_n, true );
+    // name strategy_default = get_strategy( "default"_n );
+    // name strategy_fallback = get_strategy( "fallback"_n );
+    // name strategy = strategy_main;
+    // if ( !strategy_fallback.value ) strategy_fallback = strategy_main;
+
+    name strategy;
 
     // secondary strategies
     const vector<name> secondaries = get_strategies( "secondary"_n );
@@ -67,32 +69,32 @@ void sx::push::mine( const name executor, uint64_t nonce )
     } else if ( size > 0 && random <= size ) {
         strategy = secondaries[random];
 
-    // 1st split
-    } else if ( splitter == 0 ) {
-        strategy = strategy_fallback;
-        // first transaction is null (or oracle when implemented)
-        // 1. Frequency 1/4
-        // 2. First transaction
-        // 3. 500ms interval
-        if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-            strategy = strategy_default;
-            RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
-        } else {
-            // strategy = strategy_main;
-            strategy = strategy_fallback;
-        }
-    // 2nd split
-    } else if ( splitter == 1 ) {
-        strategy = strategy_main;
-    } else if ( splitter == 2 ) {
-        strategy = strategy_top;
-    // majority
+    // splitters
+    } else if ( splitter == 0 || splitter == 1 ) {
+        strategy = "basic.sx"_n;
+    } else if ( splitter == 2 || splitter == 3 ) {
+        strategy = "top.sx"_n;
+    } else if ( splitter == 4 || splitter == 5 ) {
+        strategy = "liq.sx"_n;
     } else {
-        strategy = strategy_fallback;
+        strategy = "hft.sx"_n;
     }
 
+    // strategy = strategy_fallback;
+    // // first transaction is null (or oracle when implemented)
+    // // 1. Frequency 1/4
+    // // 2. First transaction
+    // // 3. 500ms interval
+    // if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
+    //     strategy = strategy_default;
+    //     RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
+    // } else {
+    //     // strategy = strategy_main;
+    //     strategy = strategy_fallback;
+    // }
+
     // notify strategy
-    const string msg = "push::mine: invalid [strategy=" + strategy.to_string() + "]" + to_string(size) + " - " + strategy_main.to_string() + " - " + to_string(strategy_default.value) + " - " + strategy_fallback.to_string();
+    const string msg = "push::mine: invalid [strategy=" + strategy.to_string() + "]";
     check( strategy.value, msg);
     check( is_account(strategy), msg);
     if ( strategy != "null.sx"_n) require_recipient( strategy );
@@ -100,8 +102,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // mine SXCPU per action
     // const extended_symbol SXCPU = get_SXCPU();
     const extended_asset out = { RATE, SXCPU };
-    const name first_authorizer = get_first_authorizer(executor);
-    const name to = first_authorizer == "miner.sx"_n ? "miner.sx"_n : executor;
+    // const name first_authorizer = get_first_authorizer(executor);
+    // const name to = first_authorizer == "miner.sx"_n ? "miner.sx"_n : executor;
 
     // issue mining
     // issue( out, "mine" );
@@ -113,10 +115,10 @@ void sx::push::mine( const name executor, uint64_t nonce )
     add_strategy( strategy, -RATE );
 
     // silent claim to owner
-    add_claim( to, out );
+    add_claim( executor, out );
 
     // claim after 1 hour passed
-    hourly_claim( to );
+    hourly_claim( executor );
 
     // // logging
     // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
