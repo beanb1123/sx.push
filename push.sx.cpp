@@ -76,12 +76,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
             strategy = "null.sx"_n;
             RATE = RATIO_INTERVAL * 10; // null.sx => 1.0000 SXCPU / 1s
         // splitters
-        } else if ( splitter == 0 || splitter == 1 ) {
+        } else if ( splitter == 0 ) {
             strategy = "basic.sx"_n;
         // 2x splitters
-        } else if ( splitter >= 2 && splitter <= 5 ) {
+        } else if ( splitter == 1 || splitter == 2 ) {
             strategy = "hft.sx"_n;
-        } else if ( splitter >= 6 || splitter <= 7 ) {
+        } else if ( splitter == 3 || splitter == 4 ) {
             strategy = "liq.sx"_n;
         // remaining splitter
         } else {
