@@ -42,7 +42,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t RATIO_SPLIT = config.split; // split (25/75)
     const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
     const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
-    int64_t RATE = 20'0000; // 20.0000 SXCPU base rate
+    int64_t RATE = 10'0000; // 10.0000 SXCPU base rate
 
     // salt numbers
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
@@ -63,22 +63,32 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const int size = secondaries.size() - 1;
     const int splitter = random % RATIO_SPLIT;
 
+    // secondary strategies
     if ( size > 0 && nonce <= size ) {
         strategy = secondaries[nonce];
 
     } else if ( size > 0 && random <= size ) {
         strategy = secondaries[random];
 
-    // splitters
-    } else if ( splitter == 0 || splitter == 1 ) {
-        strategy = "basic.sx"_n;
-    } else if ( splitter == 2 || splitter == 3 ) {
-        strategy = "top.sx"_n;
-    } else if ( splitter == 4 || splitter == 5 ) {
-        strategy = "liq.sx"_n;
     } else {
-        strategy = "hft.sx"_n;
+        // null
+        if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
+            strategy = "null.sx"_n;
+            RATE = RATIO_INTERVAL * 10; // null.sx => 1.0000 SXCPU / 1s
+        // splitters
+        } else if ( splitter == 0 || splitter == 1 ) {
+            strategy = "basic.sx"_n;
+        // 2x splitters
+        } else if ( splitter >= 2 && splitter <= 5 ) {
+            strategy = "hft.sx"_n;
+        } else if ( splitter >= 6 || splitter <= 7 ) {
+            strategy = "liq.sx"_n;
+        // remaining splitter
+        } else {
+            strategy = "top.sx"_n;
+        }
     }
+
 
     // strategy = strategy_fallback;
     // // first transaction is null (or oracle when implemented)
@@ -198,7 +208,7 @@ void sx::push::setconfig( const config_row config )
     sx::push::config_table _config( get_self(), get_self().value );
     auto last_config = _config.get_or_default();
     const asset supply = token::get_supply( config.ext_sym );
-    check( config.split <= 10, "push::setconfig: [config.split] cannot exceed 10");
+    check( config.split <= 20, "push::setconfig: [config.split] cannot exceed 20");
     check( config.frequency <= 100, "push::setconfig: [config.frequency] cannot exceed 100");
     check( config.interval % 500 == 0, "push::setconfig: [interval] must be modulus of 500");
     check( config.split != last_config.split || config.frequency != last_config.frequency || config.interval != last_config.interval, "push::setconfig: [config] must was not modified");
