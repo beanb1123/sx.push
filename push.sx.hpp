@@ -111,8 +111,8 @@ public:
     [[eosio::action]]
     void setstrategy( const name strategy, const optional<name> type );
 
-    [[eosio::action]]
-    void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+    // [[eosio::action]]
+    // void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
     void claimlog( const name owner, const asset balance );
@@ -140,7 +140,7 @@ public:
     using mine2_action = eosio::action_wrapper<"mine2"_n, &sx::push::mine2>;
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
-    using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+    // using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &sx::push::claimlog>;
     using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
 

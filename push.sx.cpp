@@ -167,19 +167,20 @@ vector<name> sx::push::get_strategies( const name type )
     return secondaries;
 }
 
-[[eosio::action]]
-void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
-{
-    require_auth( get_self() );
-    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
-    if ( is_account("stats.sx"_n) ) require_recipient( "stats.sx"_n );
-}
+// [[eosio::action]]
+// void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
+// {
+//     require_auth( get_self() );
+//     if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+//     if ( is_account("stats.sx"_n) ) require_recipient( "stats.sx"_n );
+// }
 
 [[eosio::action]]
 void sx::push::claimlog( const name owner, const asset balance )
 {
     require_auth( get_self() );
     if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+    require_recipient( owner );
 }
 
 [[eosio::action]]
@@ -346,9 +347,9 @@ void sx::push::claim( const name owner )
     transfer( get_self(), owner, itr.balance, "claim" );
     _claims.erase( itr );
 
-    // logging
-    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    pushlog.send( owner, owner, get_self(), itr.balance.quantity );
+    // // logging
+    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    // pushlog.send( owner, owner, get_self(), itr.balance.quantity );
 
     sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
     claimlog.send( owner, itr.balance.quantity );
