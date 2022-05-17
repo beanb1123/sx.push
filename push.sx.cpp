@@ -179,7 +179,7 @@ vector<name> sx::push::get_strategies( const name type )
 void sx::push::claimlog( const name owner, const asset balance )
 {
     require_auth( get_self() );
-    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+    // if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
     require_recipient( owner );
 }
 
