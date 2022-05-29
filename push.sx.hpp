@@ -115,7 +115,7 @@ public:
     // void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
-    void claimlog( const name executor, const asset balance, const name first_authorizer );
+    void claimlog( const name executor, const asset claimed, const name first_authorizer );
 
     [[eosio::action]]
     void claim( const name executor );

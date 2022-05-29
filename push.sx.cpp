@@ -176,7 +176,7 @@ vector<name> sx::push::get_strategies( const name type )
 // }
 
 [[eosio::action]]
-void sx::push::claimlog( const name executor, const asset balance, const name first_authorizer )
+void sx::push::claimlog( const name executor, const asset claimed, const name first_authorizer )
 {
     require_auth( get_self() );
     if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
