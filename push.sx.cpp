@@ -127,7 +127,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // silent claim to owner
     add_claim( executor, out );
 
-    // claim after 10 minutes
+    // claim after 1 minute
     interval_claim( executor );
 
     // // logging
@@ -383,7 +383,7 @@ void sx::push::interval_claim( const name executor )
     const uint32_t now = current_time_point().sec_since_epoch();
     const uint32_t created_at = itr->created_at.sec_since_epoch();
     const uint32_t delta = now - created_at;
-    if ( delta < 600 ) return; // skip
+    if ( delta < 60 ) return; // skip
     print("executor: ", executor, "\n" );
     print("delta: ", delta, "\n" );
     print("created_at: ", created_at, "\n" );
