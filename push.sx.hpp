@@ -53,11 +53,11 @@ public:
     typedef eosio::singleton< "config"_n, config_row > config_table;
 
     struct [[eosio::table("claims")]] claims_row {
-        name            owner;
+        name            executor;
         time_point      created_at;
         extended_asset  balance;
 
-        uint64_t primary_key() const { return owner.value; }
+        uint64_t primary_key() const { return executor.value; }
     };
     typedef eosio::multi_index< "claims"_n, claims_row> claims_table;
 
@@ -99,8 +99,8 @@ public:
     [[eosio::action]]
     void mine( const name executor, uint64_t nonce );
 
-    [[eosio::action]]
-    void mine2( const name executor, const checksum256 digest );
+    // [[eosio::action]]
+    // void mine2( const name executor, const checksum256 digest );
 
     [[eosio::action]]
     void update();
@@ -115,10 +115,10 @@ public:
     // void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
-    void claimlog( const name owner, const asset balance );
+    void claimlog( const name executor, const asset balance, const name first_authorizer );
 
     [[eosio::action]]
-    void claim( const name owner );
+    void claim( const name executor );
 
     [[eosio::action]]
     void reset( const name table );
@@ -137,7 +137,7 @@ public:
 
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
-    using mine2_action = eosio::action_wrapper<"mine2"_n, &sx::push::mine2>;
+    // using mine2_action = eosio::action_wrapper<"mine2"_n, &sx::push::mine2>;
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
     // using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
@@ -175,8 +175,8 @@ private:
 
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const int64_t amount, const name type = ""_n );
-    void add_claim( const name owner, const extended_asset claim );
-    void hourly_claim( const name owner );
+    void add_claim( const name executor, const extended_asset claim );
+    void interval_claim( const name executor );
 
     template <typename T>
     bool erase_table( T& table );

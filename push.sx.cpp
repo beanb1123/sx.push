@@ -8,15 +8,15 @@
 #include "src/helpers.cpp"
 #include "include/eosio.token/eosio.token.cpp"
 
-[[eosio::action]]
-void sx::push::mine2( const name executor, const checksum256 digest )
-{
-    require_auth( executor );
+// [[eosio::action]]
+// void sx::push::mine2( const name executor, const checksum256 digest )
+// {
+//     require_auth( executor );
 
-    sx::push::mine_action mine( get_self(), { get_self(), "active"_n });
-    const vector<int64_t> nonces = gems::random::generate( 1, digest );
-    mine.send( executor, nonces[0] );
-}
+//     sx::push::mine_action mine( get_self(), { get_self(), "active"_n });
+//     const vector<int64_t> nonces = gems::random::generate( 1, digest );
+//     mine.send( executor, nonces[0] );
+// }
 
 [[eosio::action]]
 void sx::push::mine( const name executor, uint64_t nonce )
@@ -127,8 +127,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // silent claim to owner
     add_claim( executor, out );
 
-    // claim after 1 hour passed
-    hourly_claim( executor );
+    // claim after 10 minutes
+    interval_claim( executor );
 
     // // logging
     // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
@@ -176,11 +176,12 @@ vector<name> sx::push::get_strategies( const name type )
 // }
 
 [[eosio::action]]
-void sx::push::claimlog( const name owner, const asset balance )
+void sx::push::claimlog( const name executor, const asset balance, const name first_authorizer )
 {
     require_auth( get_self() );
-    // if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
-    require_recipient( owner );
+    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+    if ( executor != first_authorizer ) require_recipient( first_authorizer );
+    require_recipient( executor );
 }
 
 [[eosio::action]]
@@ -209,7 +210,7 @@ void sx::push::setconfig( const config_row config )
     sx::push::config_table _config( get_self(), get_self().value );
     auto last_config = _config.get_or_default();
     const asset supply = token::get_supply( config.ext_sym );
-    check( config.split <= 20, "push::setconfig: [config.split] cannot exceed 20");
+    check( config.split <= 50, "push::setconfig: [config.split] cannot exceed 50");
     check( config.frequency <= 100, "push::setconfig: [config.frequency] cannot exceed 100");
     check( config.interval % 500 == 0, "push::setconfig: [interval] must be modulus of 500");
     check( config.split != last_config.split || config.frequency != last_config.frequency || config.interval != last_config.interval, "push::setconfig: [config] must was not modified");
@@ -334,58 +335,60 @@ void sx::push::setstrategy( const name strategy, const optional<name> type )
 }
 
 [[eosio::action]]
-void sx::push::claim( const name owner )
+void sx::push::claim( const name executor )
 {
-    if ( !has_auth( get_self() ) ) require_auth( owner );
+    if ( !has_auth( get_self() ) ) require_auth( executor );
 
     sx::push::claims_table _claims( get_self(), get_self().value );
-    auto & itr = _claims.get( owner.value, "push::claim: [owner] not found");
-    check( itr.balance.quantity.amount > 0, "push::claim: [owner] has no balance");
+    auto & itr = _claims.get( executor.value, "push::claim: [executor] not found");
+    check( itr.balance.quantity.amount > 0, "push::claim: [executor] has no balance");
 
     // issue transfer
     issue( itr.balance, "claim" );
-    transfer( get_self(), owner, itr.balance, "claim" );
+    transfer( get_self(), executor, itr.balance, "claim" );
     _claims.erase( itr );
 
     // // logging
     // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    // pushlog.send( owner, owner, get_self(), itr.balance.quantity );
+    // pushlog.send( executor, executor, get_self(), itr.balance.quantity );
+
+    const name first_authorizer = get_first_authorizer( executor );
 
     sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-    claimlog.send( owner, itr.balance.quantity );
+    claimlog.send( executor, itr.balance.quantity, first_authorizer );
 }
 
-void sx::push::add_claim( const name owner, const extended_asset claim )
+void sx::push::add_claim( const name executor, const extended_asset claim )
 {
     claims_table _claims( get_self(), get_self().value );
 
     auto insert = [&]( auto & row ) {
-        row.owner = owner;
+        row.executor = executor;
         if ( !row.created_at.sec_since_epoch() ) row.created_at = current_time_point();
         row.balance.contract = SXCPU.get_contract();
         row.balance.quantity.symbol = SXCPU.get_symbol();
         row.balance += claim;
     };
-    auto itr = _claims.find( owner.value );
+    auto itr = _claims.find( executor.value );
     if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
     else _claims.modify( itr, get_self(), insert );
 }
 
-void sx::push::hourly_claim( const name owner )
+void sx::push::interval_claim( const name executor )
 {
     claims_table _claims( get_self(), get_self().value );
-    auto itr = _claims.find( owner.value );
+    auto itr = _claims.find( executor.value );
     if ( itr == _claims.end() ) return; // skip
 
     const uint32_t now = current_time_point().sec_since_epoch();
     const uint32_t created_at = itr->created_at.sec_since_epoch();
     const uint32_t delta = now - created_at;
-    if ( delta < (owner.suffix() == "sx"_n ? 600 : 60) ) return; // skip
-    print("owner: ", owner, "\n" );
+    if ( delta < 600 ) return; // skip
+    print("executor: ", executor, "\n" );
     print("delta: ", delta, "\n" );
     print("created_at: ", created_at, "\n" );
     print("now: ", now, "\n" );
-    claim( owner );
+    claim( executor );
 }
 
 void sx::push::add_strategy( const name strategy, const int64_t amount, const name type )
