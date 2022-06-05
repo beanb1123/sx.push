@@ -99,9 +99,6 @@ public:
     [[eosio::action]]
     void mine( const name executor, uint64_t nonce );
 
-    // [[eosio::action]]
-    // void mine2( const name executor, const checksum256 digest );
-
     [[eosio::action]]
     void update();
 
@@ -111,8 +108,8 @@ public:
     [[eosio::action]]
     void setstrategy( const name strategy, const optional<name> type );
 
-    // [[eosio::action]]
-    // void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+    [[eosio::action]]
+    void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
     void claimlog( const name executor, const asset claimed, const name first_authorizer );
@@ -137,10 +134,9 @@ public:
 
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
-    // using mine2_action = eosio::action_wrapper<"mine2"_n, &sx::push::mine2>;
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     using update_action = eosio::action_wrapper<"update"_n, &sx::push::update>;
-    // using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+    using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &sx::push::claimlog>;
     using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
 
@@ -157,8 +153,6 @@ private:
     void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
     extended_asset calculate_retire( const asset payment );
     int64_t calculate_issue( const extended_asset payment );
-
-    // extended_symbol get_SXCPU();
 
     name get_first_authorizer( const name executor ) {
         char tx_buffer[eosio::transaction_size()];

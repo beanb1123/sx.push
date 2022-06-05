@@ -8,16 +8,6 @@
 #include "src/helpers.cpp"
 #include "include/eosio.token/eosio.token.cpp"
 
-// [[eosio::action]]
-// void sx::push::mine2( const name executor, const checksum256 digest )
-// {
-//     require_auth( executor );
-
-//     sx::push::mine_action mine( get_self(), { get_self(), "active"_n });
-//     const vector<int64_t> nonces = gems::random::generate( 1, digest );
-//     mine.send( executor, nonces[0] );
-// }
-
 [[eosio::action]]
 void sx::push::mine( const name executor, uint64_t nonce )
 {
@@ -42,19 +32,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t RATIO_SPLIT = config.split; // split (25/75)
     const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
     const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
-    int64_t RATE = 10'0000; // 10.0000 SXCPU base rate
+    int64_t RATE = 5'0000; // 5.0000 SXCPU base rate
+    int64_t RATE_NULL = RATIO_INTERVAL * 5; // null.sx => 0.5000 SXCPU / 1s
 
     // salt numbers
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
-
-    // // main strategies
-    // name strategy_top = get_strategy( "top"_n );
-    // name strategy_main = get_strategy( "main"_n, true );
-    // name strategy_default = get_strategy( "default"_n );
-    // name strategy_fallback = get_strategy( "fallback"_n );
-    // name strategy = strategy_main;
-    // if ( !strategy_fallback.value ) strategy_fallback = strategy_main;
 
     name strategy;
 
@@ -74,7 +57,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
         // null
         if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
             strategy = "null.sx"_n;
-            RATE = RATIO_INTERVAL * 10; // null.sx => 1.0000 SXCPU / 1s
+            RATE = RATE_NULL;
         // splitters
         } else if ( splitter == 0 ) {
             strategy = "basic.sx"_n;
@@ -89,20 +72,6 @@ void sx::push::mine( const name executor, uint64_t nonce )
         }
     }
 
-
-    // strategy = strategy_fallback;
-    // // first transaction is null (or oracle when implemented)
-    // // 1. Frequency 1/4
-    // // 2. First transaction
-    // // 3. 500ms interval
-    // if ( strategy_default && state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-    //     strategy = strategy_default;
-    //     RATE = RATIO_INTERVAL * 20; // null.sx => 1.0000 SXCPU / 500ms
-    // } else {
-    //     // strategy = strategy_main;
-    //     strategy = strategy_fallback;
-    // }
-
     // notify strategy
     const string msg = "push::mine: invalid [strategy=" + strategy.to_string() + "]";
     check( strategy.value, msg);
@@ -110,14 +79,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     if ( strategy != "null.sx"_n) require_recipient( strategy );
 
     // mine SXCPU per action
-    // const extended_symbol SXCPU = get_SXCPU();
     const extended_asset out = { RATE, SXCPU };
-    // const name first_authorizer = get_first_authorizer(executor);
-    // const name to = first_authorizer == "miner.sx"_n ? "miner.sx"_n : executor;
-
-    // issue mining
-    // issue( out, "mine" );
-    // transfer( get_self(), to, out, get_self().to_string() );
     state.supply.quantity += out.quantity;
     _state.set(state, get_self());
 
@@ -130,16 +92,11 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // claim after 1 minute
     interval_claim( executor );
 
-    // // logging
-    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    // pushlog.send( executor, first_authorizer, strategy, out.quantity );
+    // logging
+    const name first_authorizer = get_first_authorizer( executor );
+    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
-
-// extended_symbol sx::push::get_SXCPU()
-// {
-//     const asset supply = token::get_supply( { symbol{symbol_code{"SXCPU"}, 0}, get_self() } );
-//     return { supply.symbol, get_self() };
-// }
 
 name sx::push::get_strategy( const name type, const bool required )
 {
@@ -167,13 +124,11 @@ vector<name> sx::push::get_strategies( const name type )
     return secondaries;
 }
 
-// [[eosio::action]]
-// void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
-// {
-//     require_auth( get_self() );
-//     if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
-//     if ( is_account("stats.sx"_n) ) require_recipient( "stats.sx"_n );
-// }
+[[eosio::action]]
+void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
+{
+    require_auth( get_self() );
+}
 
 [[eosio::action]]
 void sx::push::claimlog( const name executor, const asset claimed, const name first_authorizer )
@@ -189,7 +144,6 @@ void sx::push::update()
 {
     require_auth( get_self() );
 
-    // const extended_symbol SXCPU = get_SXCPU();
     sx::push::state_table _state( get_self(), get_self().value );
     sx::push::config_table _config( get_self(), get_self().value );
     auto config = _config.get_or_default();
@@ -286,27 +240,13 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     if ( ext_sym == config.ext_sym ) {
         // handle deposit to strategy
         check( from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx");
-        // name strategy = sx::utils::parse_name( memo );
-        // if ( from == "fee.sx"_n && memo == "fee.sx" ) strategy = "null.sx"_n;
-        // else if ( !strategy.value ) strategy = from;
-        // check( _strategies.find( strategy.value ) != _strategies.end(), "push::handle_transfer: [strategy=" + strategy.to_string() + "] is invalid");
-
-        // // handling incoming payment
-        // int64_t payment = calculate_issue( ext_quantity );
-        // // if ( config.ext_sym == WAX ) payment *= 10000;
-        // add_strategy( strategy, payment );
         state.balance += ext_quantity;
         _state.set( state, get_self() );
-
-        // // log deposit
-        // sx::push::deposit_action deposit( get_self(), { get_self(), "active"_n });
-        // deposit.send( from, strategy, ext_quantity, extended_asset{ payment, SXCPU } );
 
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
         // calculate retire
         extended_asset out = calculate_retire( quantity );
-        // if ( config.ext_sym == WAX ) out.quantity.amount *= 10000;
         retire( ext_quantity, "retire" );
         transfer( get_self(), from, out, get_self().to_string() );
 
@@ -347,10 +287,6 @@ void sx::push::claim( const name executor )
     issue( itr.balance, "claim" );
     transfer( get_self(), executor, itr.balance, "claim" );
     _claims.erase( itr );
-
-    // // logging
-    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    // pushlog.send( executor, executor, get_self(), itr.balance.quantity );
 
     const name first_authorizer = get_first_authorizer( executor );
 
