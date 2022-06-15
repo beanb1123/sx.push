@@ -243,6 +243,10 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
         state.balance += ext_quantity;
         _state.set( state, get_self() );
 
+    // add SXCPU/EOS LP token
+    } else if ( ext_sym == BOXBKS ) {
+        check( from == "swap.defi"_n || from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx or swap.defi");
+
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
         // calculate retire
@@ -255,7 +259,7 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
         _state.set( state, get_self() );
 
     } else {
-        check( false, "push::handle_transfer: " + quantity.to_string() + " invalid transfer, must deposit " + config.ext_sym.get_symbol().code().to_string() );
+        check( false, "push::handle_transfer: " + quantity.to_string() + " invalid transfer, must deposit " + SXCPU.get_symbol().code().to_string() );
     }
 }
 

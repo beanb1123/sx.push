@@ -6,6 +6,7 @@
 using namespace eosio;
 
 static constexpr extended_symbol SXCPU{{"SXCPU", 4}, "push.sx"_n };
+static constexpr extended_symbol BOXBKS{{"BOXBKS", 0}, "lptoken.defi"_n };
 static constexpr extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
 static constexpr extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
 static constexpr extended_symbol WAX{{"WAX", 8}, "eosio.token"_n };
