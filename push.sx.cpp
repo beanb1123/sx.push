@@ -32,8 +32,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t RATIO_SPLIT = config.split; // split (25/75)
     const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
     const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
-    int64_t RATE = 5'0000; // 5.0000 SXCPU base rate
-    int64_t RATE_NULL = RATIO_INTERVAL * 5; // null.sx => 0.5000 SXCPU / 1s
+    int64_t RATE = 2'0000; // 2.0000 SXCPU base rate
+    int64_t RATE_NULL = RATIO_INTERVAL * 2; // null.sx => 0.2000 SXCPU / 1s
 
     // salt numbers
     const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
