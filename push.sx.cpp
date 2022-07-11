@@ -55,8 +55,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     } else {
         // null
-        if ( state.current <= 1 && milliseconds % RATIO_INTERVAL == 0 && random % RATIO_FREQUENCY == 0 ) {
-            strategy = "null.sx"_n;
+        if ( state.current <= 1 ) {
+            strategy = "fast.sx"_n;
             RATE = RATE_NULL;
         // splitters
         } else if ( splitter == 0 ) {
@@ -66,9 +66,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
             strategy = "hft.sx"_n;
         } else if ( splitter == 3 || splitter == 4 ) {
             strategy = "liq.sx"_n;
+        } else if ( splitter == 5 || splitter == 6 ) {
+            strategy = "top.sx"_n;
         // remaining splitter
         } else {
-            strategy = "top.sx"_n;
+            strategy = "fast.sx"_n;
+            RATE = RATE_NULL;
         }
     }
 
