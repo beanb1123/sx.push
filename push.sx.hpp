@@ -19,7 +19,7 @@ public:
     const extended_symbol WAX{{"WAX", 8}, "eosio.token"_n };
 
     // CONSTANTS
-    const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n};
+    const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n, "fallback"_n};
 
     /**
      * ## TABLE `state`
@@ -125,6 +125,9 @@ public:
     [[eosio::action]]
     void deposit( const name from, const name strategy, const extended_asset payment, const extended_asset deposit );
 
+    [[eosio::action]]
+    void test( const name type, const uint64_t random );
+
     /**
      * Notify contract when any token transfer notifiers relay contract
      */
@@ -172,6 +175,7 @@ private:
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const extended_asset ext_quantity );
     void add_claim( const name executor, const extended_asset claim );
+    void send_rewards( const name executor, const extended_asset ext_quantity );
     void interval_claim( const name executor );
 
     template <typename T>

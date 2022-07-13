@@ -26,27 +26,26 @@ void sx::push::mine( const name executor, uint64_t nonce )
     state.total += 1;
     state.last = now;
 
-    // // salt numbers
-    // const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
-    // const uint64_t random = (nonce + block_num + executor.value) % 10000;
-    const uint64_t random = nonce;
+    // salt numbers
+    const uint64_t block_num = now.time_since_epoch().count() / 500000;
+    const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
     // main splitter
-    const int splitter = nonce % 10;
+    const int splitter = nonce % 100;
 
-    // fallback strategy (5/10)
+    // fallback strategy (50/100)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 0'1000; // // 0.1000 SXCPU
+    int64_t RATE = 1000; // // 0.1000 SXCPU
 
-    // low strategies (1/10)
-    if ( splitter == 0 ) {
+    // low strategies (10/100)
+    if ( splitter <= 10 ) {
         strategy = get_strategy( "low"_n, nonce );
-        RATE *= 10; // 1.0000 SXCPU
+        RATE = 1'0000; // 1.0000 SXCPU
 
     // high strategies (4/10)
-    } else if ( splitter <= 4 ) {
+    } else if ( splitter <= 40 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE *= 100; // 10.0000 SXCPU
+        RATE = 10'0000; // 10.0000 SXCPU
     }
 
     // validate strategy
@@ -67,6 +66,9 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // claim after 1 minute
     interval_claim( executor );
 
+    // // send rewards to executor
+    // send_rewards( executor, out );
+
     // logging
     const name first_authorizer = get_first_authorizer( executor );
     sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
@@ -76,26 +78,41 @@ void sx::push::mine( const name executor, uint64_t nonce )
 name sx::push::get_strategy( const name type, const uint64_t random )
 {
     const vector<name> strategies = get_strategies( type );
-    const int size = strategies.size() - 1;
+    const int size = strategies.size();
+    print("size: ", size, "\n");
     check( size >= 0, "push::get_strategy: no strategies found");
-    return strategies[ size % random ];
+    return strategies[ random % size ];
 }
 
 vector<name> sx::push::get_strategies( const name type )
 {
-    vector<name> secondaries;
+    vector<name> strategies;
     sx::push::strategies_table _strategies( get_self(), get_self().value );
-    auto idx = _strategies.get_index<"bytype"_n>();
-    auto lower = idx.lower_bound( type.value );
-    auto upper = idx.upper_bound( type.value );
-
-    while ( lower != upper ) {
-        if ( !lower->strategy ) break;
-        if ( lower->balance.quantity.amount <= 0 ) continue; // skip ones without balances
-        secondaries.push_back( lower->strategy );
-        lower++;
+    for ( const auto row : _strategies ) {
+        if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
+        if ( row.type != type ) continue;
+        strategies.push_back( row.strategy );
+        print("strategy: ", row.strategy, "\n");
     }
-    return secondaries;
+
+    // auto idx = _strategies.get_index<"bytype"_n>();
+    // auto lower = idx.lower_bound( type.value );
+    // auto upper = idx.upper_bound( type.value );
+
+    // while ( lower != upper ) {
+    //     if ( !lower->strategy ) break;
+    //     // if ( lower->balance.quantity.amount <= 0 ) continue; // skip ones without balances
+    //     secondaries.push_back( lower->strategy );
+    //     lower++;
+    // }
+    return strategies;
+}
+
+[[eosio::action]]
+void sx::push::test( const name type, const uint64_t random )
+{
+    const name strategy = get_strategy( type, random );
+    print("selected strategy: ", strategy, "\n");
 }
 
 [[eosio::action]]
@@ -257,6 +274,17 @@ void sx::push::delstrategy( const name strategy )
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
     _strategies.erase( itr );
+}
+
+void sx::push::send_rewards( const name executor, const extended_asset ext_quantity )
+{
+    // transfer rewards
+    transfer( get_self(), executor, ext_quantity, "rewards" );
+
+    // logging
+    const name first_authorizer = get_first_authorizer( executor );
+    sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+    claimlog.send( executor, ext_quantity.quantity, first_authorizer );
 }
 
 [[eosio::action]]
