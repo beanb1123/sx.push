@@ -17,69 +17,41 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     sx::push::state_table _state( get_self(), get_self().value );
     check( _state.exists(), "contract is on going maintenance");
-
-    // set state for throttle rate limits
     auto state = _state.get_or_default();
+
+    // global stats
     const time_point now = current_time_point();
-    const int64_t milliseconds = now.time_since_epoch().count() / 1000;
-    state.current = now == state.last ? state.current + 1 : 1;
+    if ( state.last == now ) state.current += 1;
+    else state.current = 1;
     state.total += 1;
     state.last = now;
 
-    // Configurations
-    sx::push::config_table _config( get_self(), get_self().value );
-    auto config = _config.get_or_default();
-    const uint64_t RATIO_SPLIT = config.split; // split (25/75)
-    const uint64_t RATIO_FREQUENCY = config.frequency; // frequency (1/20)
-    const uint64_t RATIO_INTERVAL = config.interval; // 500ms interval time
-    int64_t RATE = 2'0000; // 2.0000 SXCPU base rate
-    int64_t RATE_NULL = RATIO_INTERVAL * 2; // null.sx => 0.2000 SXCPU / 1s
+    // // salt numbers
+    // const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
+    // const uint64_t random = (nonce + block_num + executor.value) % 10000;
+    const uint64_t random = nonce;
 
-    // salt numbers
-    const uint64_t block_num = current_time_point().time_since_epoch().count() / 500000;
-    const uint64_t random = (nonce + block_num + executor.value) % 10000;
+    // main splitter
+    const int splitter = nonce % 10;
 
-    name strategy;
+    // fallback strategy (5/10)
+    name strategy = "fast.sx"_n;
+    int64_t RATE = 0'1000; // // 0.1000 SXCPU
 
-    // secondary strategies
-    const vector<name> secondaries = get_strategies( "secondary"_n );
-    const int size = secondaries.size() - 1;
-    const int splitter = random % RATIO_SPLIT;
+    // low strategies (1/10)
+    if ( splitter == 0 ) {
+        strategy = get_strategy( "low"_n, nonce );
+        RATE *= 10; // 1.0000 SXCPU
 
-    // secondary strategies
-    if ( size > 0 && nonce <= size ) {
-        strategy = secondaries[nonce];
-
-    } else if ( size > 0 && random <= size ) {
-        strategy = secondaries[random];
-
-    } else {
-        // null
-        if ( state.current <= 1 ) {
-            strategy = "fast.sx"_n;
-            RATE = RATE_NULL;
-        // splitters
-        } else if ( splitter == 0 ) {
-            strategy = "basic.sx"_n;
-        // 2x splitters
-        } else if ( splitter == 1 || splitter == 2 ) {
-            strategy = "hft.sx"_n;
-        } else if ( splitter == 3 || splitter == 4 ) {
-            strategy = "liq.sx"_n;
-        } else if ( splitter == 5 || splitter == 6 ) {
-            strategy = "top.sx"_n;
-        // remaining splitter
-        } else {
-            strategy = "fast.sx"_n;
-            RATE = RATE_NULL;
-        }
+    // high strategies (4/10)
+    } else if ( splitter <= 4 ) {
+        strategy = get_strategy( "high"_n, nonce );
+        RATE *= 100; // 10.0000 SXCPU
     }
 
-    // notify strategy
-    const string msg = "push::mine: invalid [strategy=" + strategy.to_string() + "]";
-    check( strategy.value, msg);
-    check( is_account(strategy), msg);
-    if ( strategy != "null.sx"_n) require_recipient( strategy );
+    // validate strategy
+    check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
+    require_recipient( strategy );
 
     // mine SXCPU per action
     const extended_asset out = { RATE, SXCPU };
@@ -87,7 +59,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     _state.set(state, get_self());
 
     // deduct strategy balance
-    add_strategy( strategy, -RATE );
+    add_strategy( strategy, -out );
 
     // silent claim to owner
     add_claim( executor, out );
@@ -101,14 +73,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
     pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
 
-name sx::push::get_strategy( const name type, const bool required )
+name sx::push::get_strategy( const name type, const uint64_t random )
 {
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
-    auto idx = _strategies.get_index<"bytype"_n>();
-    auto itr = idx.find( type.value );
-    if ( itr != idx.end() ) return itr->strategy;
-    check( !required, "push::mine: [strategy.type=" + type.to_string() + "] does not exists");
-    return ""_n;
+    const vector<name> strategies = get_strategies( type );
+    const int size = strategies.size() - 1;
+    check( size >= 0, "push::get_strategy: no strategies found");
+    return strategies[ size % random ];
 }
 
 vector<name> sx::push::get_strategies( const name type )
@@ -116,11 +86,12 @@ vector<name> sx::push::get_strategies( const name type )
     vector<name> secondaries;
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     auto idx = _strategies.get_index<"bytype"_n>();
-    auto lower = idx.lower_bound( "secondary"_n.value );
-    auto upper = idx.upper_bound( "secondary"_n.value );
+    auto lower = idx.lower_bound( type.value );
+    auto upper = idx.upper_bound( type.value );
 
     while ( lower != upper ) {
         if ( !lower->strategy ) break;
+        if ( lower->balance.quantity.amount <= 0 ) continue; // skip ones without balances
         secondaries.push_back( lower->strategy );
         lower++;
     }
@@ -143,37 +114,25 @@ void sx::push::claimlog( const name executor, const asset claimed, const name fi
 }
 
 [[eosio::action]]
-void sx::push::update()
+void sx::push::init( const extended_symbol balance_ext_sym )
 {
     require_auth( get_self() );
 
     sx::push::state_table _state( get_self(), get_self().value );
-    sx::push::config_table _config( get_self(), get_self().value );
-    auto config = _config.get_or_default();
+    check( !_state.exists(), "push::init: contract already initialized" );
+
+    // update base currency balance
     auto state = _state.get_or_default();
-    const bool is_legacy = is_account( LEGACY_SXCPU.get_contract() );
-    state.balance.contract = config.ext_sym.get_contract();
-    state.balance.quantity = token::get_balance( config.ext_sym, get_self() );
+    state.balance.contract = balance_ext_sym.get_contract();
+    state.balance.quantity = token::get_balance( balance_ext_sym, get_self() );
+
+    // update SXCPU supply
     state.supply.contract = SXCPU.get_contract();
-    state.supply.quantity = is_legacy ? token::get_supply( SXCPU ) + token::get_supply( LEGACY_SXCPU ) : token::get_supply( SXCPU );
+    const bool is_legacy = is_account( LEGACY_SXCPU.get_contract() );
+    if ( is_legacy ) state.supply.quantity = token::get_supply( SXCPU ) + token::get_supply( LEGACY_SXCPU );
+    else state.supply.quantity = token::get_supply( SXCPU );
+
     _state.set( state, get_self() );
-}
-
-[[eosio::action]]
-void sx::push::setconfig( const config_row config )
-{
-    require_auth( get_self() );
-
-    sx::push::config_table _config( get_self(), get_self().value );
-    auto last_config = _config.get_or_default();
-    const asset supply = token::get_supply( config.ext_sym );
-    check( config.split <= 50, "push::setconfig: [config.split] cannot exceed 50");
-    check( config.frequency <= 100, "push::setconfig: [config.frequency] cannot exceed 100");
-    check( config.interval % 500 == 0, "push::setconfig: [interval] must be modulus of 500");
-    check( config.split != last_config.split || config.frequency != last_config.frequency || config.interval != last_config.interval, "push::setconfig: [config] must was not modified");
-    check( supply.symbol == config.ext_sym.get_symbol(), "push::setconfig: [config.ext_sym] symbol does not match supply");
-    if ( last_config.ext_sym.get_symbol() ) check( last_config.ext_sym == config.ext_sym, "push::setconfig: [config.ext_sym] cannot be modified");
-    _config.set( config, get_self() );
 }
 
 [[eosio::action]]
@@ -182,10 +141,12 @@ void sx::push::reset( const name table )
     require_auth( get_self() );
 
     sx::push::strategies_table _strategies( get_self(), get_self().value );
-    sx::push::config_table _config( get_self(), get_self().value );
+    sx::push::claims_table _claims( get_self(), get_self().value );
+    sx::push::state_table _state( get_self(), get_self().value );
 
     if ( table == "strategies"_n ) erase_table( _strategies );
-    else if ( table == "config"_n ) _config.remove();
+    else if ( table == "claims"_n ) erase_table( _claims );
+    else if ( table == "state"_n ) _state.remove();
     else check( false, "invalid table name");
 }
 
@@ -221,26 +182,24 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
 void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
     // tables
-    sx::push::config_table _config( get_self(), get_self().value );
     sx::push::state_table _state( get_self(), get_self().value );
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     check( _state.exists(), "push::handle_transfer: contract is under maintenance");
-    check( _config.exists(), "push::handle_transfer: contract is under maintenance");
 
-    auto config = _config.get();
+    // auto config = _config.get();
     auto state = _state.get();
 
     // helpers
     const asset quantity = ext_quantity.quantity;
     const name contract = ext_quantity.contract;
     const extended_symbol ext_sym = { ext_quantity.quantity.symbol, contract };
-    // const extended_symbol SXCPU = get_SXCPU();
+    const name strategy = sx::utils::parse_name(memo);
 
     // ignore outgoing transfers
     if ( to != get_self() ) return;
 
     // send EOS/WAX to push.sx (increases value of SXCPU)
-    if ( ext_sym == config.ext_sym ) {
+    if ( ext_sym == EOS || ext_sym == WAX ) {
         // handle deposit to strategy
         check( from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx");
         state.balance += ext_quantity;
@@ -249,6 +208,10 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     // add SXCPU/EOS LP token
     } else if ( ext_sym == BOXBKS ) {
         check( from == "swap.defi"_n || from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx or swap.defi");
+
+    // add to strategy - SXCPU
+    } else if ( ext_sym == SXCPU && strategy.value ) {
+        add_strategy( strategy, ext_quantity );
 
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
@@ -267,18 +230,33 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
 }
 
 [[eosio::action]]
-void sx::push::setstrategy( const name strategy, const optional<name> type )
+void sx::push::setstrategy( const name strategy, const name type )
 {
     require_auth( get_self() );
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     check( is_account( strategy ), "push::setstrategy: [strategy] account does not exists");
 
-    if ( type ) add_strategy( strategy, 0, *type );
-    else {
-        // erase if no type
-        auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
-        _strategies.erase( itr );
-    }
+    check( PRIORITY_TYPES.find( type ) != PRIORITY_TYPES.end(), "push::setstrategy: [type] is invalid");
+
+    auto insert = [&]( auto & row ) {
+        row.strategy = strategy;
+        row.type = type;
+        row.balance.contract = SXCPU.get_contract();
+        row.balance.quantity.symbol = SXCPU.get_symbol();
+    };
+    auto itr = _strategies.find( strategy.value );
+    if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
+    else _strategies.modify( itr, get_self(), insert );
+}
+
+
+[[eosio::action]]
+void sx::push::delstrategy( const name strategy )
+{
+    require_auth( get_self() );
+    sx::push::strategies_table _strategies( get_self(), get_self().value );
+    auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
+    _strategies.erase( itr );
 }
 
 [[eosio::action]]
@@ -290,13 +268,12 @@ void sx::push::claim( const name executor )
     auto & itr = _claims.get( executor.value, "push::claim: [executor] not found");
     check( itr.balance.quantity.amount > 0, "push::claim: [executor] has no balance");
 
-    // issue transfer
-    issue( itr.balance, "claim" );
+    // transfer to claim
     transfer( get_self(), executor, itr.balance, "claim" );
     _claims.erase( itr );
 
+    // logging
     const name first_authorizer = get_first_authorizer( executor );
-
     sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
     claimlog.send( executor, itr.balance.quantity, first_authorizer );
 }
@@ -307,9 +284,11 @@ void sx::push::add_claim( const name executor, const extended_asset claim )
 
     auto insert = [&]( auto & row ) {
         row.executor = executor;
-        if ( !row.created_at.sec_since_epoch() ) row.created_at = current_time_point();
-        row.balance.contract = SXCPU.get_contract();
-        row.balance.quantity.symbol = SXCPU.get_symbol();
+        if ( !row.created_at.sec_since_epoch() ) {
+            row.created_at = current_time_point();
+            row.balance.contract = SXCPU.get_contract();
+            row.balance.quantity.symbol = SXCPU.get_symbol();
+        }
         row.balance += claim;
     };
     auto itr = _claims.find( executor.value );
@@ -327,29 +306,17 @@ void sx::push::interval_claim( const name executor )
     const uint32_t created_at = itr->created_at.sec_since_epoch();
     const uint32_t delta = now - created_at;
     if ( delta < 60 ) return; // skip
-    print("executor: ", executor, "\n" );
-    print("delta: ", delta, "\n" );
-    print("created_at: ", created_at, "\n" );
-    print("now: ", now, "\n" );
     claim( executor );
 }
 
-void sx::push::add_strategy( const name strategy, const int64_t amount, const name type )
+void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
 {
     strategies_table _strategies( get_self(), get_self().value );
-    config_table _config( get_self(), get_self().value );
-    auto config = _config.get_or_default();
-    // const extended_symbol SXCPU = get_SXCPU();
 
     auto insert = [&]( auto & row ) {
-        row.strategy = strategy;
         row.last = current_time_point();
-        row.balance.contract = SXCPU.get_contract();
-        row.balance.quantity.symbol = SXCPU.get_symbol();
-        row.balance.quantity.amount += amount;
-        if ( type.value ) row.type = type;
-        if ( !row.type.value ) row.type = "secondary"_n;
-        // if ( amount < 0 ) check( row.balance.quantity.amount > 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
+        row.balance += ext_quantity;
+        if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount > 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
     };
     auto itr = _strategies.find( strategy.value );
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
