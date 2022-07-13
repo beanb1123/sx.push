@@ -60,19 +60,19 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // deduct strategy balance
     add_strategy( strategy, -out );
 
-    // silent claim to owner
-    add_claim( executor, out );
+    // // silent claim to owner
+    // add_claim( executor, out );
 
-    // claim after 1 minute
-    interval_claim( executor );
+    // // claim after 1 minute
+    // interval_claim( executor );
 
-    // // send rewards to executor
-    // send_rewards( executor, out );
+    // send rewards to executor
+    send_rewards( executor, out );
 
-    // logging
-    const name first_authorizer = get_first_authorizer( executor );
-    sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    pushlog.send( executor, first_authorizer, strategy, out.quantity );
+    // // logging
+    // const name first_authorizer = get_first_authorizer( executor );
+    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
+    // pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
 
 name sx::push::get_strategy( const name type, const uint64_t random )
@@ -344,7 +344,7 @@ void sx::push::add_strategy( const name strategy, const extended_asset ext_quant
     auto insert = [&]( auto & row ) {
         row.last = current_time_point();
         row.balance += ext_quantity;
-        if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount > 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
+        if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount >= 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
     };
     auto itr = _strategies.find( strategy.value );
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
