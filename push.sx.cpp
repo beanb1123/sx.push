@@ -40,12 +40,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // low strategies (10/100)
     if ( splitter <= 10 ) {
         strategy = get_strategy( "low"_n, nonce );
-        RATE = 1'0000; // 1.0000 SXCPU
+        RATE = 5'0000; // 5.0000 SXCPU
 
     // high strategies (4/10)
     } else if ( splitter <= 40 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 10'0000; // 10.0000 SXCPU
+        RATE = 5'0000; // 5.0000 SXCPU
     }
 
     // validate strategy
@@ -86,6 +86,10 @@ name sx::push::get_strategy( const name type, const uint64_t random )
 
 vector<name> sx::push::get_strategies( const name type )
 {
+    // TEMP SOLUTION to improve performance
+    if ( type == "low"_n ) return { "eosnationdsp"_n, "eosnationftw"_n, "fee.sx"_n, "oracle.sx"_n, "proxy4nation"_n, "unpack.gems"_n };
+    else if ( type == "high"_n ) return { "basic.sx"_n, "hft.sx"_n, "liq.sx"_n, "top.sx"_n };
+
     vector<name> strategies;
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     for ( const auto row : _strategies ) {
@@ -344,7 +348,7 @@ void sx::push::add_strategy( const name strategy, const extended_asset ext_quant
     auto insert = [&]( auto & row ) {
         row.last = current_time_point();
         row.balance += ext_quantity;
-        if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount >= 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
+        // if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount >= 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
     };
     auto itr = _strategies.find( strategy.value );
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
