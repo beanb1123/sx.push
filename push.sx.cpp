@@ -35,7 +35,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // fallback strategy (50/100)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 1000; // // 0.1000 SXCPU
+    int64_t RATE = 1000; // 0.1000 SXCPU
+    // if ( state.total >= 2 ) RATE = 5'0000 // 5.0000 SXCPU (2nd attempt)
 
     // low strategies (10/100)
     if ( splitter <= 10 ) {
