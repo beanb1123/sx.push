@@ -41,12 +41,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // low strategies (10/100)
     if ( splitter <= 10 ) {
         strategy = get_strategy( "low"_n, nonce );
-        RATE = 5'0000; // 5.0000 SXCPU
+        RATE = 1'0000; // 1.0000 SXCPU
 
     // high strategies (4/10)
     } else if ( splitter <= 40 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 5'0000; // 5.0000 SXCPU
+        RATE = 1'0000; // 1.0000 SXCPU
     }
 
     // validate strategy
@@ -94,7 +94,7 @@ vector<name> sx::push::get_strategies( const name type )
     vector<name> strategies;
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     for ( const auto row : _strategies ) {
-        if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
+        // if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
         if ( row.type != type ) continue;
         strategies.push_back( row.strategy );
         print("strategy: ", row.strategy, "\n");
@@ -237,6 +237,8 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
 
     // redeem - SXCPU => EOS
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
+        check(false, "SXCPU/EOS liquidity is currently migrating to Defibox Swap");
+
         // calculate retire
         extended_asset out = calculate_retire( quantity );
         retire( ext_quantity, "retire" );
@@ -245,7 +247,6 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
         state.balance -= out;
         state.supply.quantity -= quantity;
         _state.set( state, get_self() );
-
     } else {
         check( false, "push::handle_transfer: " + quantity.to_string() + " invalid transfer, must deposit " + SXCPU.get_symbol().code().to_string() );
     }
