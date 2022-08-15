@@ -33,12 +33,11 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // main splitter
     const int splitter = nonce % 100;
 
-    // fallback strategy (50/100)
+    // fallback strategy (5/10)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 1000; // 0.1000 SXCPU
-    // if ( state.total >= 2 ) RATE = 5'0000 // 5.0000 SXCPU (2nd attempt)
+    int64_t RATE = 250; // 0.0250 SXCPU
 
-    // low strategies (10/100)
+    // low strategies (1/10)
     if ( splitter <= 10 ) {
         strategy = get_strategy( "low"_n, nonce );
         RATE = 1'0000; // 1.0000 SXCPU
@@ -46,7 +45,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // high strategies (4/10)
     } else if ( splitter <= 40 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 1'0000; // 1.0000 SXCPU
+        RATE = 4'0000; // 4.0000 SXCPU
     }
 
     // validate strategy
@@ -61,19 +60,8 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // deduct strategy balance
     add_strategy( strategy, -out );
 
-    // // silent claim to owner
-    // add_claim( executor, out );
-
-    // // claim after 1 minute
-    // interval_claim( executor );
-
     // send rewards to executor
     send_rewards( executor, out );
-
-    // // logging
-    // const name first_authorizer = get_first_authorizer( executor );
-    // sx::push::pushlog_action pushlog( get_self(), { get_self(), "active"_n });
-    // pushlog.send( executor, first_authorizer, strategy, out.quantity );
 }
 
 name sx::push::get_strategy( const name type, const uint64_t random )
@@ -111,13 +99,6 @@ vector<name> sx::push::get_strategies( const name type )
     //     lower++;
     // }
     return strategies;
-}
-
-[[eosio::action]]
-void sx::push::test( const name type, const uint64_t random )
-{
-    const name strategy = get_strategy( type, random );
-    print("selected strategy: ", strategy, "\n");
 }
 
 [[eosio::action]]

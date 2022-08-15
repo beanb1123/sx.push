@@ -125,9 +125,6 @@ public:
     [[eosio::action]]
     void deposit( const name from, const name strategy, const extended_asset payment, const extended_asset deposit );
 
-    [[eosio::action]]
-    void test( const name type, const uint64_t random );
-
     /**
      * Notify contract when any token transfer notifiers relay contract
      */
