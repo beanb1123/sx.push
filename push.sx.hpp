@@ -21,44 +21,43 @@ public:
     // CONSTANTS
     const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n, "fallback"_n};
 
-    /**
-     * ## TABLE `state`
-     *
-     * - `{time_point} last` - last timestamp executed mine action
-     * - `{uint64_t} current` - current number of transactions per block
-     * - `{uint64_t} total` - total number of transactions
-     * - `{extended_asset} balance` - reward balance
-     * - `{extended_asset} supply` - supply of CPU tokens
-     *
-     * ### example
-     *
-     * ```json
-     * {
-     *   "last": "2020-12-04T01:38:02.000"
-     *   "current": 1,
-     *   "total": 25941,
-     *   "balance": { "quantity": "15050.6506 EOS", "contract": "eosio.token" },
-     *   "supply": { "quantity": "5181544.6565 SXCPU", "contract": "push.sx" }
-     * }
-     * ```
-     */
-    struct [[eosio::table("state")]] state_row {
-        time_point      last;
-        uint64_t        current = 0;
-        uint64_t        total = 0;
-        extended_asset  balance;
-        extended_asset  supply;
-    };
-    typedef eosio::singleton< "state"_n, state_row > state_table;
+    // /**
+    //  * ## TABLE `state`
+    //  *
+    //  * - `{time_point} last` - last timestamp executed mine action
+    //  * - `{uint64_t} current` - current number of transactions per block
+    //  * - `{uint64_t} total` - total number of transactions
+    //  * - `{extended_asset} balance` - reward balance
+    //  * - `{extended_asset} supply` - supply of CPU tokens
+    //  *
+    //  * ### example
+    //  *
+    //  * ```json
+    //  * {
+    //  *   "last": "2020-12-04T01:38:02.000"
+    //  *   "current": 1,
+    //  *   "total": 25941,
+    //  *   "balance": { "quantity": "15050.6506 EOS", "contract": "eosio.token" },
+    //  *   "supply": { "quantity": "5181544.6565 SXCPU", "contract": "push.sx" }
+    //  * }
+    //  * ```
+    //  */
+    // struct [[eosio::table("state")]] state_row {
+    //     time_point      last;
+    //     uint64_t        current = 0;
+    //     uint64_t        total = 0;
+    //     extended_asset  balance;
+    //     extended_asset  supply;
+    // };
+    // typedef eosio::singleton< "state"_n, state_row > state_table;
 
-    struct [[eosio::table("claims")]] claims_row {
-        name            executor;
-        time_point      created_at;
-        extended_asset  balance;
+    struct [[eosio::table("miners")]] miners_row {
+        name                first_authorizer;
+        time_point_sec      last;
 
-        uint64_t primary_key() const { return executor.value; }
+        uint64_t primary_key() const { return first_authorizer.value; }
     };
-    typedef eosio::multi_index< "claims"_n, claims_row> claims_table;
+    typedef eosio::multi_index< "miners"_n, miners_row> miners_table;
 
     struct [[eosio::table("strategies")]] strategies_row {
         name            strategy;
@@ -98,8 +97,8 @@ public:
     [[eosio::action]]
     void mine( const name executor, uint64_t nonce );
 
-    [[eosio::action]]
-    void init( const extended_symbol balance_ext_sym );
+    // [[eosio::action]]
+    // void init( const extended_symbol balance_ext_sym );
 
     // [[eosio::action]]
     // void setconfig( const config_row config );
@@ -116,8 +115,8 @@ public:
     [[eosio::action]]
     void claimlog( const name executor, const asset claimed, const name first_authorizer );
 
-    [[eosio::action]]
-    void claim( const name executor );
+    // [[eosio::action]]
+    // void claim( const name executor );
 
     [[eosio::action]]
     void reset( const name table );
@@ -137,7 +136,7 @@ public:
     // action wrapper
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
-    using init_action = eosio::action_wrapper<"init"_n, &sx::push::init>;
+    // using init_action = eosio::action_wrapper<"init"_n, &sx::push::init>;
     using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &sx::push::claimlog>;
     using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
@@ -153,8 +152,8 @@ private:
     name get_strategy( const name type, const uint64_t random );
 
     void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
-    extended_asset calculate_retire( const asset payment );
-    int64_t calculate_issue( const extended_asset payment );
+    // extended_asset calculate_retire( const asset payment );
+    // int64_t calculate_issue( const extended_asset payment );
 
     name get_first_authorizer( const name executor ) {
         char tx_buffer[eosio::transaction_size()];
@@ -171,9 +170,11 @@ private:
 
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const extended_asset ext_quantity );
-    void add_claim( const name executor, const extended_asset claim );
+    // void add_claim( const name executor, const extended_asset claim );
     void send_rewards( const name executor, const extended_asset ext_quantity );
-    void interval_claim( const name executor );
+    // void interval_claim( const name executor );
+    void sucess_miner( const name first_authorizer );
+    void check_sucess_miner( const name first_authorizer );
 
     template <typename T>
     bool erase_table( T& table );

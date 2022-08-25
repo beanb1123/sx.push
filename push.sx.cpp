@@ -15,18 +15,18 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // check( false, "disabled");
 
-    sx::push::state_table _state( get_self(), get_self().value );
-    check( _state.exists(), "contract is on going maintenance");
-    auto state = _state.get_or_default();
+    // sx::push::state_table _state( get_self(), get_self().value );
+    // check( _state.exists(), "contract is on going maintenance");
+    // auto state = _state.get_or_default();
 
-    // global stats
-    const time_point now = current_time_point();
-    if ( state.last == now ) state.current += 1;
-    else state.current = 1;
-    state.total += 1;
-    state.last = now;
+    // // global stats
+    // if ( state.last == now ) state.current += 1;
+    // else state.current = 1;
+    // state.total += 1;
+    // state.last = now;
 
     // salt numbers
+    const time_point now = current_time_point();
     const uint64_t block_num = now.time_since_epoch().count() / 500000;
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
@@ -35,7 +35,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // fallback strategy (5/10)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 250; // 0.0250 SXCPU
+    int64_t RATE = 1000; // 0.1000 SXCPU
 
     // low strategies (1/10)
     if ( splitter <= 10 ) {
@@ -48,14 +48,20 @@ void sx::push::mine( const name executor, uint64_t nonce )
         RATE = 4'0000; // 4.0000 SXCPU
     }
 
+    // enforce miners to push heavy CPU transactions
+    // must push successful transaction in the last 24h
+    const name first_authorizer = get_first_authorizer( executor );
+    if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
+    else check_sucess_miner( first_authorizer );
+
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
     require_recipient( strategy );
 
     // mine SXCPU per action
     const extended_asset out = { RATE, SXCPU };
-    state.supply.quantity += out.quantity;
-    _state.set(state, get_self());
+    // state.supply.quantity += out.quantity;
+    // _state.set(state, get_self());
 
     // deduct strategy balance
     add_strategy( strategy, -out );
@@ -116,27 +122,27 @@ void sx::push::claimlog( const name executor, const asset claimed, const name fi
     require_recipient( executor );
 }
 
-[[eosio::action]]
-void sx::push::init( const extended_symbol balance_ext_sym )
-{
-    require_auth( get_self() );
+// [[eosio::action]]
+// void sx::push::init( const extended_symbol balance_ext_sym )
+// {
+//     require_auth( get_self() );
 
-    sx::push::state_table _state( get_self(), get_self().value );
-    check( !_state.exists(), "push::init: contract already initialized" );
+//     sx::push::state_table _state( get_self(), get_self().value );
+//     check( !_state.exists(), "push::init: contract already initialized" );
 
-    // update base currency balance
-    auto state = _state.get_or_default();
-    state.balance.contract = balance_ext_sym.get_contract();
-    state.balance.quantity = token::get_balance( balance_ext_sym, get_self() );
+//     // update base currency balance
+//     auto state = _state.get_or_default();
+//     state.balance.contract = balance_ext_sym.get_contract();
+//     state.balance.quantity = token::get_balance( balance_ext_sym, get_self() );
 
-    // update SXCPU supply
-    state.supply.contract = SXCPU.get_contract();
-    const bool is_legacy = is_account( LEGACY_SXCPU.get_contract() );
-    if ( is_legacy ) state.supply.quantity = token::get_supply( SXCPU ) + token::get_supply( LEGACY_SXCPU );
-    else state.supply.quantity = token::get_supply( SXCPU );
+//     // update SXCPU supply
+//     state.supply.contract = SXCPU.get_contract();
+//     const bool is_legacy = is_account( LEGACY_SXCPU.get_contract() );
+//     if ( is_legacy ) state.supply.quantity = token::get_supply( SXCPU ) + token::get_supply( LEGACY_SXCPU );
+//     else state.supply.quantity = token::get_supply( SXCPU );
 
-    _state.set( state, get_self() );
-}
+//     _state.set( state, get_self() );
+// }
 
 [[eosio::action]]
 void sx::push::reset( const name table )
@@ -144,12 +150,12 @@ void sx::push::reset( const name table )
     require_auth( get_self() );
 
     sx::push::strategies_table _strategies( get_self(), get_self().value );
-    sx::push::claims_table _claims( get_self(), get_self().value );
-    sx::push::state_table _state( get_self(), get_self().value );
+    sx::push::miners_table _miners( get_self(), get_self().value );
+    // sx::push::state_table _state( get_self(), get_self().value );
 
     if ( table == "strategies"_n ) erase_table( _strategies );
-    else if ( table == "claims"_n ) erase_table( _claims );
-    else if ( table == "state"_n ) _state.remove();
+    else if ( table == "miners"_n ) erase_table( _miners );
+    // else if ( table == "state"_n ) _state.remove();
     else check( false, "invalid table name");
 }
 
@@ -185,12 +191,12 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
 void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
     // tables
-    sx::push::state_table _state( get_self(), get_self().value );
+    // sx::push::state_table _state( get_self(), get_self().value );
     sx::push::strategies_table _strategies( get_self(), get_self().value );
-    check( _state.exists(), "push::handle_transfer: contract is under maintenance");
+    // check( _state.exists(), "push::handle_transfer: contract is under maintenance");
 
-    // auto config = _config.get();
-    auto state = _state.get();
+    // // auto config = _config.get();
+    // auto state = _state.get();
 
     // helpers
     const asset quantity = ext_quantity.quantity;
@@ -205,8 +211,8 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     if ( ext_sym == EOS || ext_sym == WAX ) {
         // handle deposit to strategy
         check( from.suffix() == "sx"_n, "push::handle_transfer: invalid account, must be *.sx");
-        state.balance += ext_quantity;
-        _state.set( state, get_self() );
+        // state.balance += ext_quantity;
+        // _state.set( state, get_self() );
 
     // add SXCPU/EOS LP token
     } else if ( ext_sym == BOXBKS ) {
@@ -220,14 +226,14 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     } else if ( ext_sym == SXCPU || ext_sym == LEGACY_SXCPU ) {
         check(false, "SXCPU/EOS liquidity is currently migrating to Defibox Swap");
 
-        // calculate retire
-        extended_asset out = calculate_retire( quantity );
-        retire( ext_quantity, "retire" );
-        transfer( get_self(), from, out, get_self().to_string() );
+        // // calculate retire
+        // extended_asset out = calculate_retire( quantity );
+        // retire( ext_quantity, "retire" );
+        // transfer( get_self(), from, out, get_self().to_string() );
 
-        state.balance -= out;
-        state.supply.quantity -= quantity;
-        _state.set( state, get_self() );
+        // state.balance -= out;
+        // state.supply.quantity -= quantity;
+        // _state.set( state, get_self() );
     } else {
         check( false, "push::handle_transfer: " + quantity.to_string() + " invalid transfer, must deposit " + SXCPU.get_symbol().code().to_string() );
     }
@@ -274,55 +280,76 @@ void sx::push::send_rewards( const name executor, const extended_asset ext_quant
     claimlog.send( executor, ext_quantity.quantity, first_authorizer );
 }
 
-[[eosio::action]]
-void sx::push::claim( const name executor )
+// [[eosio::action]]
+// void sx::push::claim( const name executor )
+// {
+//     if ( !has_auth( get_self() ) ) require_auth( executor );
+
+//     sx::push::claims_table _claims( get_self(), get_self().value );
+//     auto & itr = _claims.get( executor.value, "push::claim: [executor] not found");
+//     check( itr.balance.quantity.amount > 0, "push::claim: [executor] has no balance");
+
+//     // transfer to claim
+//     transfer( get_self(), executor, itr.balance, "claim" );
+//     _claims.erase( itr );
+
+//     // logging
+//     const name first_authorizer = get_first_authorizer( executor );
+//     sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+//     claimlog.send( executor, itr.balance.quantity, first_authorizer );
+// }
+
+void sx::push::check_sucess_miner( const name first_authorizer )
 {
-    if ( !has_auth( get_self() ) ) require_auth( executor );
-
-    sx::push::claims_table _claims( get_self(), get_self().value );
-    auto & itr = _claims.get( executor.value, "push::claim: [executor] not found");
-    check( itr.balance.quantity.amount > 0, "push::claim: [executor] has no balance");
-
-    // transfer to claim
-    transfer( get_self(), executor, itr.balance, "claim" );
-    _claims.erase( itr );
-
-    // logging
-    const name first_authorizer = get_first_authorizer( executor );
-    sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-    claimlog.send( executor, itr.balance.quantity, first_authorizer );
+    miners_table _miners( get_self(), get_self().value );
+    const uint32_t last = _miners.get( first_authorizer.value, "push::check_success_miner: has not pushed recent successful transaction" ).last.sec_since_epoch();
+    const uint32_t now = current_time_point().sec_since_epoch();
+    check( last >= (now - 86400), "push::check_success_miner: has not pushed recent successful transaction" );
 }
 
-void sx::push::add_claim( const name executor, const extended_asset claim )
+void sx::push::sucess_miner( const name first_authorizer )
 {
-    claims_table _claims( get_self(), get_self().value );
+    miners_table _miners( get_self(), get_self().value );
 
     auto insert = [&]( auto & row ) {
-        row.executor = executor;
-        if ( !row.created_at.sec_since_epoch() ) {
-            row.created_at = current_time_point();
-            row.balance.contract = SXCPU.get_contract();
-            row.balance.quantity.symbol = SXCPU.get_symbol();
-        }
-        row.balance += claim;
+        row.first_authorizer = first_authorizer;
+        row.last = current_time_point();
     };
-    auto itr = _claims.find( executor.value );
-    if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
-    else _claims.modify( itr, get_self(), insert );
+    auto itr = _miners.find( first_authorizer.value );
+    if ( itr == _miners.end() ) _miners.emplace( get_self(), insert );
+    else _miners.modify( itr, get_self(), insert );
 }
 
-void sx::push::interval_claim( const name executor )
-{
-    claims_table _claims( get_self(), get_self().value );
-    auto itr = _claims.find( executor.value );
-    if ( itr == _claims.end() ) return; // skip
+// void sx::push::add_claim( const name executor, const extended_asset claim )
+// {
+//     claims_table _claims( get_self(), get_self().value );
 
-    const uint32_t now = current_time_point().sec_since_epoch();
-    const uint32_t created_at = itr->created_at.sec_since_epoch();
-    const uint32_t delta = now - created_at;
-    if ( delta < 60 ) return; // skip
-    claim( executor );
-}
+//     auto insert = [&]( auto & row ) {
+//         row.executor = executor;
+//         if ( !row.created_at.sec_since_epoch() ) {
+//             row.created_at = current_time_point();
+//             row.balance.contract = SXCPU.get_contract();
+//             row.balance.quantity.symbol = SXCPU.get_symbol();
+//         }
+//         row.balance += claim;
+//     };
+//     auto itr = _claims.find( executor.value );
+//     if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
+//     else _claims.modify( itr, get_self(), insert );
+// }
+
+// void sx::push::interval_claim( const name executor )
+// {
+//     claims_table _claims( get_self(), get_self().value );
+//     auto itr = _claims.find( executor.value );
+//     if ( itr == _claims.end() ) return; // skip
+
+//     const uint32_t now = current_time_point().sec_since_epoch();
+//     const uint32_t created_at = itr->created_at.sec_since_epoch();
+//     const uint32_t delta = now - created_at;
+//     if ( delta < 60 ) return; // skip
+//     claim( executor );
+// }
 
 void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
 {
@@ -338,43 +365,43 @@ void sx::push::add_strategy( const name strategy, const extended_asset ext_quant
     else _strategies.modify( itr, get_self(), insert );
 }
 
-int64_t sx::push::calculate_issue( const extended_asset payment )
-{
-    sx::push::state_table _state( get_self(), get_self().value );
-    auto state = _state.get();
-    const extended_symbol ext_sym = payment.get_extended_symbol();
+// int64_t sx::push::calculate_issue( const extended_asset payment )
+// {
+//     sx::push::state_table _state( get_self(), get_self().value );
+//     auto state = _state.get();
+//     const extended_symbol ext_sym = payment.get_extended_symbol();
 
-    // initialize reward supply (0.0001 EOS / 0.00250000 WAX)
-    double ratio;
-    if ( ext_sym == EOS ) ratio = 1'0000;
-    else if ( ext_sym == WAX ) ratio = 0.04;
-    else check(false, "push::calculate_issue: invalid payment symbol");
+//     // initialize reward supply (0.0001 EOS / 0.00250000 WAX)
+//     double ratio;
+//     if ( ext_sym == EOS ) ratio = 1'0000;
+//     else if ( ext_sym == WAX ) ratio = 0.04;
+//     else check(false, "push::calculate_issue: invalid payment symbol");
 
-    if ( state.supply.quantity.amount == 0 ) return (int64_t)(payment.quantity.amount * ratio);
-    // check( state.supply.quantity.amount != 0, "push::calculate_issue: cannot issue when supply is 0");
+//     if ( state.supply.quantity.amount == 0 ) return (int64_t)(payment.quantity.amount * ratio);
+//     // check( state.supply.quantity.amount != 0, "push::calculate_issue: cannot issue when supply is 0");
 
-    // issue & redeem supply calculation
-    // calculations based on fill REX order
-    // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
-    const int64_t S0 = state.balance.quantity.amount;
-    const int64_t S1 = S0 + payment.quantity.amount;
-    const int64_t R0 = state.supply.quantity.amount;
-    const int64_t R1 = (uint128_t(S1) * R0) / S0;
+//     // issue & redeem supply calculation
+//     // calculations based on fill REX order
+//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
+//     const int64_t S0 = state.balance.quantity.amount;
+//     const int64_t S1 = S0 + payment.quantity.amount;
+//     const int64_t R0 = state.supply.quantity.amount;
+//     const int64_t R1 = (uint128_t(S1) * R0) / S0;
 
-    return R1 - R0;
-}
+//     return R1 - R0;
+// }
 
-extended_asset sx::push::calculate_retire( const asset payment )
-{
-    sx::push::state_table _state( get_self(), get_self().value );
-    auto state = _state.get();
+// extended_asset sx::push::calculate_retire( const asset payment )
+// {
+//     sx::push::state_table _state( get_self(), get_self().value );
+//     auto state = _state.get();
 
-    // issue & redeem supply calculation
-    // calculations based on add to REX pool
-    // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L772
-    const int64_t S0 = state.balance.quantity.amount;
-    const int64_t R0 = state.supply.quantity.amount;
-    const int64_t p  = (uint128_t(payment.amount) * S0) / R0;
+//     // issue & redeem supply calculation
+//     // calculations based on add to REX pool
+//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L772
+//     const int64_t S0 = state.balance.quantity.amount;
+//     const int64_t R0 = state.supply.quantity.amount;
+//     const int64_t p  = (uint128_t(payment.amount) * S0) / R0;
 
-    return { p, state.balance.get_extended_symbol() };
-}
+//     return { p, state.balance.get_extended_symbol() };
+// }
