@@ -13,18 +13,6 @@ void sx::push::mine( const name executor, uint64_t nonce )
 {
     if ( !has_auth( get_self() ) ) require_auth( executor );
 
-    // check( false, "disabled");
-
-    // sx::push::state_table _state( get_self(), get_self().value );
-    // check( _state.exists(), "contract is on going maintenance");
-    // auto state = _state.get_or_default();
-
-    // // global stats
-    // if ( state.last == now ) state.current += 1;
-    // else state.current = 1;
-    // state.total += 1;
-    // state.last = now;
-
     // salt numbers
     const time_point now = current_time_point();
     const uint64_t block_num = now.time_since_epoch().count() / 500000;
@@ -35,7 +23,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // fallback strategy (5/10)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 1000; // 0.1000 SXCPU
+    int64_t RATE = 500; // 0.5000 SXCPU
 
     // low strategies (1/10)
     if ( splitter <= 10 ) {
@@ -45,7 +33,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // high strategies (4/10)
     } else if ( splitter <= 40 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 4'0000; // 4.0000 SXCPU
+        RATE = 2'0000; // 2.0000 SXCPU
     }
 
     // enforce miners to push heavy CPU transactions
@@ -60,8 +48,6 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // mine SXCPU per action
     const extended_asset out = { RATE, SXCPU };
-    // state.supply.quantity += out.quantity;
-    // _state.set(state, get_self());
 
     // deduct strategy balance
     add_strategy( strategy, -out );
@@ -271,13 +257,15 @@ void sx::push::delstrategy( const name strategy )
 
 void sx::push::send_rewards( const name executor, const extended_asset ext_quantity )
 {
-    // transfer rewards
-    transfer( get_self(), executor, ext_quantity, "rewards" );
+    if ( ext_quantity.quantity.amount ) {
+        // transfer rewards
+        transfer( get_self(), executor, ext_quantity, "rewards" );
 
-    // logging
-    const name first_authorizer = get_first_authorizer( executor );
-    sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-    claimlog.send( executor, ext_quantity.quantity, first_authorizer );
+        // logging
+        const name first_authorizer = get_first_authorizer( executor );
+        sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+        claimlog.send( executor, ext_quantity.quantity, first_authorizer );
+    }
 }
 
 // [[eosio::action]]
