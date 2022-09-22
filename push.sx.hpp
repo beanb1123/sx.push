@@ -21,35 +21,29 @@ public:
     // CONSTANTS
     const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n, "fallback"_n};
 
-    // /**
-    //  * ## TABLE `state`
-    //  *
-    //  * - `{time_point} last` - last timestamp executed mine action
-    //  * - `{uint64_t} current` - current number of transactions per block
-    //  * - `{uint64_t} total` - total number of transactions
-    //  * - `{extended_asset} balance` - reward balance
-    //  * - `{extended_asset} supply` - supply of CPU tokens
-    //  *
-    //  * ### example
-    //  *
-    //  * ```json
-    //  * {
-    //  *   "last": "2020-12-04T01:38:02.000"
-    //  *   "current": 1,
-    //  *   "total": 25941,
-    //  *   "balance": { "quantity": "15050.6506 EOS", "contract": "eosio.token" },
-    //  *   "supply": { "quantity": "5181544.6565 SXCPU", "contract": "push.sx" }
-    //  * }
-    //  * ```
-    //  */
-    // struct [[eosio::table("state")]] state_row {
-    //     time_point      last;
-    //     uint64_t        current = 0;
-    //     uint64_t        total = 0;
-    //     extended_asset  balance;
-    //     extended_asset  supply;
-    // };
-    // typedef eosio::singleton< "state"_n, state_row > state_table;
+    /**
+     * ## TABLE `issuance`
+     *
+     * - `{time_point_sec} epoch` - epoch timestamp
+     * - `{uint32_t} interval` - epoch interval
+     * - `{asset} rate` - issuance rate
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "epoch": "2020-12-04T01:38:02"
+     *   "interval": 600,
+     *   "rate": "100.0000 SXCPU"
+     * }
+     * ```
+     */
+    struct [[eosio::table("issuance")]] issuance_row {
+        time_point_sec      epoch;
+        uint32_t            interval = 600;
+        asset               rate = asset{100'0000, symbol{"SXCPU", 4}};
+    };
+    typedef eosio::singleton< "issuance"_n, issuance_row > issuance_table;
 
     struct [[eosio::table("miners")]] miners_row {
         name                first_authorizer;
@@ -110,6 +104,9 @@ public:
     void delstrategy( const name strategy );
 
     [[eosio::action]]
+    void setissuance( const uint32_t interval, const asset rate );
+
+    [[eosio::action]]
     void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
 
     [[eosio::action]]
@@ -168,6 +165,7 @@ private:
         return executor;
     };
 
+    void trigger_issuance();
     void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const extended_asset ext_quantity );
     // void add_claim( const name executor, const extended_asset claim );

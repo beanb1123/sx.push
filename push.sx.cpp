@@ -54,6 +54,9 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // send rewards to executor
     send_rewards( executor, out );
+
+    // trigger issuance of SXCPU tokens
+    trigger_issuance();
 }
 
 name sx::push::get_strategy( const name type, const uint64_t random )
@@ -91,6 +94,39 @@ vector<name> sx::push::get_strategies( const name type )
     //     lower++;
     // }
     return strategies;
+}
+
+[[eosio::action]]
+void sx::push::setissuance( const uint32_t interval, const asset rate )
+{
+    require_auth( get_self() );
+    sx::push::issuance_table _issuance( get_self(), get_self().value );
+
+    check(interval >= 600, "[interval] must be above 600 seconds");
+    check(rate.amount <= 100'0000, "[rate] cannot exceed 100'0000");
+
+    auto issuance = _issuance.get_or_default();
+    issuance.interval = interval;
+    issuance.rate = rate;
+    _issuance.set( issuance, get_self() );
+}
+
+void sx::push::trigger_issuance()
+{
+    sx::push::issuance_table _issuance( get_self(), get_self().value );
+
+    auto issuance = _issuance.get_or_default();
+    const uint32_t now = current_time_point().sec_since_epoch();
+    const time_point_sec epoch = time_point_sec((now / issuance.interval) * issuance.interval);
+    if ( issuance.epoch == epoch ) return;
+
+    // issue tokens
+    token::issue_action issue( get_self(), { get_self(), "active"_n });
+    issue.send( get_self(), issuance.rate, "issue" );
+
+    // set epoch
+    issuance.epoch = time_point_sec(epoch);
+    _issuance.set( issuance, get_self() );
 }
 
 [[eosio::action]]
