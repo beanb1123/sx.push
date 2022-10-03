@@ -21,17 +21,17 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // main splitter
     const int splitter = nonce % 100;
 
-    // fallback strategy (5/10)
+    // fallback strategy (1/10)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 500; // 0.5000 SXCPU
+    int64_t RATE = 250; // 0.5000 SXCPU
 
-    // low strategies (1/10)
-    if ( splitter <= 10 ) {
+    // low strategies (4/10)
+    if ( splitter <= 40 ) {
         strategy = get_strategy( "low"_n, nonce );
         RATE = 1'0000; // 1.0000 SXCPU
 
-    // high strategies (4/10)
-    } else if ( splitter <= 40 ) {
+    // high strategies (5/10)
+    } else if ( splitter <= 90 ) {
         strategy = get_strategy( "high"_n, nonce );
         RATE = 2'0000; // 2.0000 SXCPU
     }
