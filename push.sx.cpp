@@ -36,11 +36,13 @@ void sx::push::mine( const name executor, uint64_t nonce )
         RATE = 2'0000; // 2.0000 SXCPU
     }
 
-    // enforce miners to push heavy CPU transactions
-    // must push successful transaction in the last 24h
     const name first_authorizer = get_first_authorizer( executor );
-    if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
-    else check_sucess_miner( first_authorizer );
+    sucess_miner( first_authorizer );
+
+    // // enforce miners to push heavy CPU transactions
+    // // must push successful transaction in the last 24h
+    // if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
+    // else check_sucess_miner( first_authorizer );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
