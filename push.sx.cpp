@@ -21,29 +21,34 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // main splitter
     const int splitter = nonce % 100;
 
-    // fallback strategy (3/10)
+    // fallback strategy (4/10)
     name strategy = "fast.sx"_n;
-    int64_t RATE = 250; // 0.5000 SXCPU
+    int64_t RATE = 500; // 0.0500 SXCPU
 
     // low strategies (1/10)
     if ( splitter <= 10 ) {
         strategy = get_strategy( "low"_n, nonce );
         RATE = 1'0000; // 1.0000 SXCPU
 
-    // high strategies (7/10)
-    } else if ( splitter <= 70 ) {
-        strategy = "hft.sx"_n;
-        RATE = 2'0000; // 2.0000 SXCPU
-    } else if ( splitter <= 10 ) {
+    // high strategies (2/10)
+    } else if ( splitter <= 30 ) {
         strategy = get_strategy( "high"_n, nonce );
+        RATE = 2'0000; // 2.0000 SXCPU
+
+    // hft strategies (3/10)
+    } else if ( splitter <= 60 ) {
+        strategy = "hft.sx"_n;
         RATE = 2'0000; // 2.0000 SXCPU
     }
 
+    // track successful miners
+    const name first_authorizer = get_first_authorizer( executor );
+    sucess_miner( first_authorizer );
+
     // enforce miners to push heavy CPU transactions
     // must push successful transaction in the last 24h
-    const name first_authorizer = get_first_authorizer( executor );
-    if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
-    else check_sucess_miner( first_authorizer );
+    // if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
+    // else check_sucess_miner( first_authorizer );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
