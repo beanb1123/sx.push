@@ -71,7 +71,7 @@ void token::retire( const asset& quantity, const string& memo )
        s.supply -= quantity;
     });
 
-    sub_balance( st.issuer, quantity );
+    sub_balance( st.issuer, quantity, get_self() );
 }
 
 void token::transfer( const name&    from,
@@ -96,7 +96,7 @@ void token::transfer( const name&    from,
 
     auto payer = has_auth( to ) ? to : from;
 
-    sub_balance( from, quantity );
+    sub_balance( from, quantity, from );
     add_balance( to, quantity, payer );
 
     // notify push.sx
@@ -119,17 +119,17 @@ void token::reclaim( const name from, const asset quantity )
     check( quantity.amount > 0, "must transfer positive quantity" );
     check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
 
-    sub_balance( from, quantity );
+    sub_balance( from, quantity, get_self() );
     add_balance( st.issuer, quantity, get_self() );
 }
 
-void token::sub_balance( const name& owner, const asset& value ) {
+void token::sub_balance( const name& owner, const asset& value, const name& ram_payer ) {
    accounts from_acnts( get_self(), owner.value );
 
    const auto& from = from_acnts.get( value.symbol.code().raw(), "no balance object found" );
    check( from.balance.amount >= value.amount, "overdrawn balance" );
 
-   from_acnts.modify( from, owner, [&]( auto& a ) {
+   from_acnts.modify( from, ram_payer, [&]( auto& a ) {
       a.balance -= value;
    });
 }
