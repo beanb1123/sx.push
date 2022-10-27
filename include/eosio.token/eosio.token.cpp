@@ -104,6 +104,25 @@ void token::transfer( const name&    from,
     ontransfer.send( from, to, extended_asset{ quantity, get_self() }, memo );
 }
 
+void token::reclaim( const name from, const asset quantity )
+{
+    require_auth( get_self() );
+
+    check( is_account( from ), "[from] does not exist");
+    auto sym = quantity.symbol.code();
+    stats statstable( get_self(), sym.raw() );
+    const auto& st = statstable.get( sym.raw() );
+
+    require_recipient( from );
+
+    check( quantity.is_valid(), "invalid quantity" );
+    check( quantity.amount > 0, "must transfer positive quantity" );
+    check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+
+    sub_balance( from, quantity );
+    add_balance( st.issuer, quantity, get_self() );
+}
+
 void token::sub_balance( const name& owner, const asset& value ) {
    accounts from_acnts( get_self(), owner.value );
 

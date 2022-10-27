@@ -101,6 +101,15 @@ namespace eosio {
          [[eosio::action]]
          void close( const name& owner, const symbol& symbol );
 
+         /**
+          * @brief reclaim tokens from account and internally transfer to issuer
+          *
+          * @param from - account to reclaim tokens from
+          * @param quantity - quantity of tokens to reclaim
+          */
+         [[eosio::action]]
+         void reclaim( const name from, const asset quantity );
+
          static asset get_supply( const extended_symbol ext_sym )
          {
             const symbol_code sym_code = ext_sym.get_symbol().code();
