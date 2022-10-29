@@ -41,14 +41,14 @@ void sx::push::mine( const name executor, uint64_t nonce )
         RATE = 2'0000; // 2.0000 SXCPU
     }
 
-    // track successful miners
-    const name first_authorizer = get_first_authorizer( executor );
-    sucess_miner( first_authorizer );
+    // // track successful miners
+    // sucess_miner( first_authorizer );
 
-    // // enforce miners to push heavy CPU transactions
-    // // must push successful transaction in the last 24h
-    // if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
-    // else check_sucess_miner( first_authorizer );
+    // enforce miners to push heavy CPU transactions
+    // must push successful transaction in the last 1h
+    const name first_authorizer = get_first_authorizer( executor );
+    if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
+    else check_sucess_miner( first_authorizer );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
@@ -79,17 +79,19 @@ name sx::push::get_strategy( const name type, const uint64_t random )
 vector<name> sx::push::get_strategies( const name type )
 {
     // TEMP SOLUTION to improve performance
-    if ( type == "low"_n ) return { "eosnationdsp"_n, "eosnationftw"_n, "fee.sx"_n, "oracle.sx"_n, "proxy4nation"_n, "unpack.gems"_n };
+    if ( type == "low"_n ) return { "eosnationdsp"_n, "eosnationftw"_n, "fee.sx"_n, "heavy.sx"_n, "oracle.sx"_n, "proxy4nation"_n, "unpack.gems"_n };
     else if ( type == "high"_n ) return { "basic.sx"_n, "hft.sx"_n, "liq.sx"_n, "top.sx"_n };
+    check(false, "push::get_strategies: invalid [type=" + type.to_string() + "]");
+    return {};
 
-    vector<name> strategies;
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
-    for ( const auto row : _strategies ) {
-        // if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
-        if ( row.type != type ) continue;
-        strategies.push_back( row.strategy );
-        // print("strategy: ", row.strategy, "\n");
-    }
+    // vector<name> strategies;
+    // sx::push::strategies_table _strategies( get_self(), get_self().value );
+    // for ( const auto row : _strategies ) {
+    //     // if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
+    //     if ( row.type != type ) continue;
+    //     strategies.push_back( row.strategy );
+    //     // print("strategy: ", row.strategy, "\n");
+    // }
 
     // auto idx = _strategies.get_index<"bytype"_n>();
     // auto lower = idx.lower_bound( type.value );
@@ -101,7 +103,7 @@ vector<name> sx::push::get_strategies( const name type )
     //     secondaries.push_back( lower->strategy );
     //     lower++;
     // }
-    return strategies;
+    // return strategies;
 }
 
 [[eosio::action]]
@@ -224,8 +226,8 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
 
 void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
-    // ignore outgoing transfers
-    if ( from == get_self() ) return;
+    // ignore no-incoming transfers
+    if ( to != get_self() ) return;
 
     const asset quantity = ext_quantity.quantity;
     const name contract = ext_quantity.contract;
@@ -304,7 +306,7 @@ void sx::push::check_sucess_miner( const name first_authorizer )
     miners_table _miners( get_self(), get_self().value );
     const uint32_t last = _miners.get( first_authorizer.value, "push::check_success_miner: has not pushed recent successful transaction" ).last.sec_since_epoch();
     const uint32_t now = current_time_point().sec_since_epoch();
-    check( last >= (now - 86400), "push::check_success_miner: has not pushed recent successful transaction" );
+    check( last >= (now - 3600 * 8), "push::check_success_miner: has not pushed recent successful transaction" );
 }
 
 void sx::push::sucess_miner( const name first_authorizer )
