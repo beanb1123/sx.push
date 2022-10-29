@@ -47,7 +47,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // enforce miners to push heavy CPU transactions
     // must push successful transaction in the last 1h
     const name first_authorizer = get_first_authorizer( executor );
-    if ( strategy != "fast.sx"_n ) sucess_miner( first_authorizer );
+    if ( strategy == "heavy.sx"_n ) sucess_miner( first_authorizer );
     else check_sucess_miner( first_authorizer );
 
     // validate strategy
