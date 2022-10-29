@@ -91,8 +91,8 @@ public:
     [[eosio::action]]
     void mine( const name executor, uint64_t nonce );
 
-    // [[eosio::action]]
-    // void init( const extended_symbol balance_ext_sym );
+    [[eosio::action]]
+    void init();
 
     // [[eosio::action]]
     // void setconfig( const config_row config );
