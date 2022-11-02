@@ -19,7 +19,7 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
     // main splitter
-    const int splitter = nonce % 100;
+    const int splitter = random % 100;
 
     // fallback strategy (85/100)
     name strategy = FALLBACK_STRATEGY;
