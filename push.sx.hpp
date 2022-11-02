@@ -20,6 +20,22 @@ public:
 
     // CONSTANTS
     const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n, "fallback"_n};
+    const name FALLBACK_STRATEGY = "fast.sx"_n;
+    const vector<name> LOW_STRATEGIES = {
+        "eosnationdsp"_n,
+        "eosnationftw"_n,
+        "fee.sx"_n,
+        "heavy.sx"_n,
+        "oracle.sx"_n,
+        "proxy4nation"_n,
+        "unpack.gems"_n
+    };
+    const vector<name> HIGH_STRATEGIES = {
+        "basic.sx"_n,
+        "hft.sx"_n,
+        "liq.sx"_n,
+        "top.sx"_n
+    };
 
     /**
      * ## TABLE `issuance`

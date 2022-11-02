@@ -21,34 +21,28 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // main splitter
     const int splitter = nonce % 100;
 
-    // fallback strategy (4/10)
-    name strategy = "fast.sx"_n;
+    // fallback strategy (85/100)
+    name strategy = FALLBACK_STRATEGY;
     int64_t RATE = 500; // 0.0500 SXCPU
 
-    // low strategies (1/10)
-    if ( splitter <= 10 ) {
+    // low strategies (5/100)
+    if ( splitter <= 5 ) {
         strategy = get_strategy( "low"_n, nonce );
         RATE = 1'0000; // 1.0000 SXCPU
 
-    // high strategies (2/10)
-    } else if ( splitter <= 30 ) {
+    // high strategies (10/100)
+    } else if ( splitter <= 15 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 2'0000; // 2.0000 SXCPU
-
-    // hft strategies (3/10)
-    } else if ( splitter <= 60 ) {
-        strategy = "hft.sx"_n;
-        RATE = 2'0000; // 2.0000 SXCPU
+        RATE = 1'0000; // 1.0000 SXCPU
     }
-
-    // // track successful miners
-    // sucess_miner( first_authorizer );
 
     // enforce miners to push heavy CPU transactions
     // must push successful transaction in the last 1h
     const name first_authorizer = get_first_authorizer( executor );
-    if ( strategy == "heavy.sx"_n ) sucess_miner( first_authorizer );
-    else check_sucess_miner( first_authorizer );
+    if ( strategy == "heavy.sx"_n ) {
+        sucess_miner( first_authorizer );
+        RATE = 0;
+    } else check_sucess_miner( first_authorizer );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
@@ -71,7 +65,6 @@ name sx::push::get_strategy( const name type, const uint64_t random )
 {
     const vector<name> strategies = get_strategies( type );
     const int size = strategies.size();
-    // print("size: ", size, "\n");
     check( size >= 0, "push::get_strategy: no strategies found");
     return strategies[ random % size ];
 }
@@ -79,31 +72,10 @@ name sx::push::get_strategy( const name type, const uint64_t random )
 vector<name> sx::push::get_strategies( const name type )
 {
     // TEMP SOLUTION to improve performance
-    if ( type == "low"_n ) return { "eosnationdsp"_n, "eosnationftw"_n, "fee.sx"_n, "heavy.sx"_n, "oracle.sx"_n, "proxy4nation"_n, "unpack.gems"_n };
-    else if ( type == "high"_n ) return { "basic.sx"_n, "hft.sx"_n, "liq.sx"_n, "top.sx"_n };
+    if ( type == "low"_n ) return LOW_STRATEGIES;
+    else if ( type == "high"_n ) return HIGH_STRATEGIES;
     check(false, "push::get_strategies: invalid [type=" + type.to_string() + "]");
     return {};
-
-    // vector<name> strategies;
-    // sx::push::strategies_table _strategies( get_self(), get_self().value );
-    // for ( const auto row : _strategies ) {
-    //     // if ( row.balance.quantity.amount <= 0 ) continue; // skip ones without balances
-    //     if ( row.type != type ) continue;
-    //     strategies.push_back( row.strategy );
-    //     // print("strategy: ", row.strategy, "\n");
-    // }
-
-    // auto idx = _strategies.get_index<"bytype"_n>();
-    // auto lower = idx.lower_bound( type.value );
-    // auto upper = idx.upper_bound( type.value );
-
-    // while ( lower != upper ) {
-    //     if ( !lower->strategy ) break;
-    //     // if ( lower->balance.quantity.amount <= 0 ) continue; // skip ones without balances
-    //     secondaries.push_back( lower->strategy );
-    //     lower++;
-    // }
-    // return strategies;
 }
 
 [[eosio::action]]
@@ -282,25 +254,6 @@ void sx::push::send_rewards( const name executor, const extended_asset ext_quant
     }
 }
 
-// [[eosio::action]]
-// void sx::push::claim( const name executor )
-// {
-//     if ( !has_auth( get_self() ) ) require_auth( executor );
-
-//     sx::push::claims_table _claims( get_self(), get_self().value );
-//     auto & itr = _claims.get( executor.value, "push::claim: [executor] not found");
-//     check( itr.balance.quantity.amount > 0, "push::claim: [executor] has no balance");
-
-//     // transfer to claim
-//     transfer( get_self(), executor, itr.balance, "claim" );
-//     _claims.erase( itr );
-
-//     // logging
-//     const name first_authorizer = get_first_authorizer( executor );
-//     sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-//     claimlog.send( executor, itr.balance.quantity, first_authorizer );
-// }
-
 void sx::push::check_sucess_miner( const name first_authorizer )
 {
     miners_table _miners( get_self(), get_self().value );
@@ -322,37 +275,6 @@ void sx::push::sucess_miner( const name first_authorizer )
     else _miners.modify( itr, get_self(), insert );
 }
 
-// void sx::push::add_claim( const name executor, const extended_asset claim )
-// {
-//     claims_table _claims( get_self(), get_self().value );
-
-//     auto insert = [&]( auto & row ) {
-//         row.executor = executor;
-//         if ( !row.created_at.sec_since_epoch() ) {
-//             row.created_at = current_time_point();
-//             row.balance.contract = SXCPU.get_contract();
-//             row.balance.quantity.symbol = SXCPU.get_symbol();
-//         }
-//         row.balance += claim;
-//     };
-//     auto itr = _claims.find( executor.value );
-//     if ( itr == _claims.end() ) _claims.emplace( get_self(), insert );
-//     else _claims.modify( itr, get_self(), insert );
-// }
-
-// void sx::push::interval_claim( const name executor )
-// {
-//     claims_table _claims( get_self(), get_self().value );
-//     auto itr = _claims.find( executor.value );
-//     if ( itr == _claims.end() ) return; // skip
-
-//     const uint32_t now = current_time_point().sec_since_epoch();
-//     const uint32_t created_at = itr->created_at.sec_since_epoch();
-//     const uint32_t delta = now - created_at;
-//     if ( delta < 60 ) return; // skip
-//     claim( executor );
-// }
-
 void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
 {
     strategies_table _strategies( get_self(), get_self().value );
@@ -366,44 +288,3 @@ void sx::push::add_strategy( const name strategy, const extended_asset ext_quant
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
     else _strategies.modify( itr, get_self(), insert );
 }
-
-// int64_t sx::push::calculate_issue( const extended_asset payment )
-// {
-//     sx::push::state_table _state( get_self(), get_self().value );
-//     auto state = _state.get();
-//     const extended_symbol ext_sym = payment.get_extended_symbol();
-
-//     // initialize reward supply (0.0001 EOS / 0.00250000 WAX)
-//     double ratio;
-//     if ( ext_sym == EOS ) ratio = 1'0000;
-//     else if ( ext_sym == WAX ) ratio = 0.04;
-//     else check(false, "push::calculate_issue: invalid payment symbol");
-
-//     if ( state.supply.quantity.amount == 0 ) return (int64_t)(payment.quantity.amount * ratio);
-//     // check( state.supply.quantity.amount != 0, "push::calculate_issue: cannot issue when supply is 0");
-
-//     // issue & redeem supply calculation
-//     // calculations based on fill REX order
-//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L775-L779
-//     const int64_t S0 = state.balance.quantity.amount;
-//     const int64_t S1 = S0 + payment.quantity.amount;
-//     const int64_t R0 = state.supply.quantity.amount;
-//     const int64_t R1 = (uint128_t(S1) * R0) / S0;
-
-//     return R1 - R0;
-// }
-
-// extended_asset sx::push::calculate_retire( const asset payment )
-// {
-//     sx::push::state_table _state( get_self(), get_self().value );
-//     auto state = _state.get();
-
-//     // issue & redeem supply calculation
-//     // calculations based on add to REX pool
-//     // https://github.com/EOSIO/eosio.contracts/blob/f6578c45c83ec60826e6a1eeb9ee71de85abe976/contracts/eosio.system/src/rex.cpp#L772
-//     const int64_t S0 = state.balance.quantity.amount;
-//     const int64_t R0 = state.supply.quantity.amount;
-//     const int64_t p  = (uint128_t(payment.amount) * S0) / R0;
-
-//     return { p, state.balance.get_extended_symbol() };
-// }
