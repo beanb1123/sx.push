@@ -259,7 +259,7 @@ void sx::push::check_sucess_miner( const name first_authorizer )
     miners_table _miners( get_self(), get_self().value );
     const uint32_t last = _miners.get( first_authorizer.value, "push::check_success_miner: has not pushed recent successful transaction" ).last.sec_since_epoch();
     const uint32_t now = current_time_point().sec_since_epoch();
-    check( last >= (now - 3600 * 8), "push::check_success_miner: has not pushed recent successful transaction" );
+    check( last >= (now - 3600 * 48), "push::check_success_miner: has not pushed recent successful transaction" );
 }
 
 void sx::push::sucess_miner( const name first_authorizer )
