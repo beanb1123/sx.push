@@ -25,7 +25,7 @@ public:
         "eosnationdsp"_n,
         "eosnationftw"_n,
         "fee.sx"_n,
-        "heavy.sx"_n,
+        // "heavy.sx"_n,
         "oracle.sx"_n,
         "proxy4nation"_n,
         "unpack.gems"_n

@@ -23,42 +23,42 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // fallback strategy (85/100)
     name strategy = FALLBACK_STRATEGY;
-    int64_t RATE = 500; // 0.0500 SXCPU
+    int64_t RATE = 0; // 0.0500 SXCPU
 
     // low strategies (5/100)
     if ( splitter <= 5 ) {
         strategy = get_strategy( "low"_n, nonce );
-        RATE = 1'0000; // 1.0000 SXCPU
+        RATE = 0; // 1.0000 SXCPU
 
     // high strategies (10/100)
     } else if ( splitter <= 15 ) {
         strategy = get_strategy( "high"_n, nonce );
-        RATE = 1'0000; // 1.0000 SXCPU
+        RATE = 0; // 1.0000 SXCPU
     }
 
-    // enforce miners to push heavy CPU transactions
-    // must push successful transaction in the last 1h
-    const name first_authorizer = get_first_authorizer( executor );
-    if ( strategy == "heavy.sx"_n ) {
-        sucess_miner( first_authorizer );
-        RATE = 0;
-    } else check_sucess_miner( first_authorizer );
+    // // enforce miners to push heavy CPU transactions
+    // // must push successful transaction in the last 1h
+    // const name first_authorizer = get_first_authorizer( executor );
+    // if ( strategy == "heavy.sx"_n ) {
+    //     sucess_miner( first_authorizer );
+    //     RATE = 0;
+    // } else check_sucess_miner( first_authorizer );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
     require_recipient( strategy );
 
     // mine SXCPU per action
-    const extended_asset out = { RATE, SXCPU };
+    // const extended_asset out = { RATE, SXCPU };
 
     // deduct strategy balance
-    add_strategy( strategy, -out );
+    // add_strategy( strategy, -out );
 
     // send rewards to executor
-    send_rewards( executor, out );
+    // send_rewards( executor, out );
 
     // trigger issuance of SXCPU tokens
-    trigger_issuance();
+    // trigger_issuance();
 }
 
 name sx::push::get_strategy( const name type, const uint64_t random )
