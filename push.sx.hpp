@@ -13,10 +13,10 @@ public:
 
     // BASE SYMBOLS
     const extended_symbol SXCPU{{"SXCPU", 4}, "push.sx"_n };
-    const extended_symbol BOXBKS{{"BOXBKS", 0}, "lptoken.defi"_n };
-    const extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
-    const extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
-    const extended_symbol WAX{{"WAX", 8}, "eosio.token"_n };
+    // const extended_symbol BOXBKS{{"BOXBKS", 0}, "lptoken.defi"_n };
+    // const extended_symbol LEGACY_SXCPU{{"SXCPU", 4}, "token.sx"_n };
+    // const extended_symbol EOS{{"EOS", 4}, "eosio.token"_n };
+    // const extended_symbol WAX{{"WAX", 8}, "eosio.token"_n };
 
     // CONSTANTS
     const set<name> PRIORITY_TYPES = set<name>{"low"_n, "high"_n, "fallback"_n};
@@ -25,7 +25,7 @@ public:
         "eosnationdsp"_n,
         "eosnationftw"_n,
         "fee.sx"_n,
-        // "heavy.sx"_n,
+        "heavy.sx"_n,
         "oracle.sx"_n,
         "proxy4nation"_n,
         "unpack.gems"_n
@@ -63,28 +63,22 @@ public:
 
     struct [[eosio::table("miners")]] miners_row {
         name                first_authorizer;
-        time_point_sec      last;
+        uint64_t            rank;
+        extended_asset      balance;
 
         uint64_t primary_key() const { return first_authorizer.value; }
     };
     typedef eosio::multi_index< "miners"_n, miners_row> miners_table;
 
     struct [[eosio::table("strategies")]] strategies_row {
-        name            strategy;
-        name            type;
-        time_point      last;
-        extended_asset  balance;
+        name                strategy;
+        uint64_t            priority;
+        asset               fee;
+        extended_asset      balance;
 
         uint64_t primary_key() const { return strategy.value; }
-        uint64_t by_type() const { return type.value; }
-        uint64_t by_last() const { return last.sec_since_epoch(); }
-        uint64_t by_balance() const { return balance.quantity.amount; }
     };
-    typedef eosio::multi_index< "strategies"_n, strategies_row,
-        indexed_by< "bytype"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_type> >,
-        indexed_by< "bylast"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_last> >,
-        indexed_by< "bybalance"_n, const_mem_fun<strategies_row, uint64_t, &strategies_row::by_balance> >
-    > strategies_table;
+    typedef eosio::multi_index< "strategies"_n, strategies_row> strategies_table;
 
     /**
      * ## ACTION `push`
@@ -108,13 +102,10 @@ public:
     void mine( const name executor, uint64_t nonce );
 
     [[eosio::action]]
-    void init();
-
-    // [[eosio::action]]
-    // void setconfig( const config_row config );
+    void setstrategy( const name strategy, const uint64_t priority, const asset fee );
 
     [[eosio::action]]
-    void setstrategy( const name strategy, const name type );
+    void setminer( const name first_authorizer, const uint64_t rank );
 
     [[eosio::action]]
     void delstrategy( const name strategy );
@@ -122,14 +113,11 @@ public:
     [[eosio::action]]
     void setissuance( const uint32_t interval, const asset rate );
 
-    [[eosio::action]]
-    void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
-
-    [[eosio::action]]
-    void claimlog( const name executor, const asset claimed, const name first_authorizer );
-
     // [[eosio::action]]
-    // void claim( const name executor );
+    // void pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine );
+
+    [[eosio::action]]
+    void claimlog( const name first_authorizer, const asset claimed );
 
     [[eosio::action]]
     void reset( const name table );
@@ -150,7 +138,7 @@ public:
     using mine_action = eosio::action_wrapper<"mine"_n, &sx::push::mine>;
     using ontransfer_action = eosio::action_wrapper<"ontransfer"_n, &sx::push::ontransfer>;
     // using init_action = eosio::action_wrapper<"init"_n, &sx::push::init>;
-    using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
+    // using pushlog_action = eosio::action_wrapper<"pushlog"_n, &sx::push::pushlog>;
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &sx::push::claimlog>;
     using deposit_action = eosio::action_wrapper<"deposit"_n, &sx::push::deposit>;
 
@@ -182,13 +170,14 @@ private:
     };
 
     void trigger_issuance();
-    void exec( const name proposer, const name proposal_name );
     void add_strategy( const name strategy, const extended_asset ext_quantity );
+    void send_rewards(const name executor );
+
+
     // void add_claim( const name executor, const extended_asset claim );
-    void send_rewards( const name executor, const extended_asset ext_quantity );
     // void interval_claim( const name executor );
-    void sucess_miner( const name first_authorizer );
-    void check_sucess_miner( const name first_authorizer );
+    // void sucess_miner( const name first_authorizer );
+    // void check_sucess_miner( const name first_authorizer );
 
     template <typename T>
     bool erase_table( T& table );

@@ -23,26 +23,12 @@ void sx::push::mine( const name executor, uint64_t nonce )
 
     // fallback strategy (85/100)
     name strategy = FALLBACK_STRATEGY;
-    int64_t RATE = 0; // 0.0500 SXCPU
 
     // low strategies (5/100)
-    if ( splitter <= 5 ) {
-        strategy = get_strategy( "low"_n, nonce );
-        RATE = 0; // 1.0000 SXCPU
+    if ( splitter <= 5 ) strategy = get_strategy( "low"_n, nonce );
 
     // high strategies (10/100)
-    } else if ( splitter <= 15 ) {
-        strategy = get_strategy( "high"_n, nonce );
-        RATE = 0; // 1.0000 SXCPU
-    }
-
-    // // enforce miners to push heavy CPU transactions
-    // // must push successful transaction in the last 1h
-    // const name first_authorizer = get_first_authorizer( executor );
-    // if ( strategy == "heavy.sx"_n ) {
-    //     sucess_miner( first_authorizer );
-    //     RATE = 0;
-    // } else check_sucess_miner( first_authorizer );
+    else if ( splitter <= 15 ) strategy = get_strategy( "high"_n, nonce );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
@@ -54,11 +40,11 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // deduct strategy balance
     // add_strategy( strategy, -out );
 
-    // send rewards to executor
-    // send_rewards( executor, out );
+    // send rewards to first executor
+    send_rewards( executor );
 
     // trigger issuance of SXCPU tokens
-    // trigger_issuance();
+    trigger_issuance();
 }
 
 name sx::push::get_strategy( const name type, const uint64_t random )
@@ -93,10 +79,30 @@ void sx::push::setissuance( const uint32_t interval, const asset rate )
     _issuance.set( issuance, get_self() );
 }
 
+[[eosio::action]]
+void sx::push::setminer( const name first_authorizer, const uint64_t rank )
+{
+    require_auth( get_self() );
+
+    sx::push::miners_table _miners( get_self(), get_self().value );
+    check( is_account( first_authorizer ), "push::setminer: [first_authorizer] account does not exists");
+
+    auto insert = [&]( auto & row ) {
+        row.first_authorizer = first_authorizer;
+        row.rank = rank;
+        row.balance.contract = SXCPU.get_contract();
+        row.balance.quantity.symbol = SXCPU.get_symbol();
+    };
+    auto itr = _miners.find( first_authorizer.value );
+    if ( itr == _miners.end() ) _miners.emplace( get_self(), insert );
+    else _miners.modify( itr, get_self(), insert );
+}
+
 void sx::push::trigger_issuance()
 {
     sx::push::issuance_table _issuance( get_self(), get_self().value );
     sx::push::strategies_table _strategies( get_self(), get_self().value );
+    sx::push::miners_table _miners( get_self(), get_self().value );
 
     auto issuance = _issuance.get_or_default();
     const uint32_t now = current_time_point().sec_since_epoch();
@@ -105,64 +111,48 @@ void sx::push::trigger_issuance()
 
     // issue tokens
     token::issue_action issue( get_self(), { get_self(), "active"_n });
-    issue.send( get_self(), issuance.rate, "issue" );
+    issue.send( get_self(), issuance.rate, "fund per-push bucket" );
 
     // set epoch
     issuance.epoch = time_point_sec(epoch);
     _issuance.set( issuance, get_self() );
 
-    // update fast.sx balance
-    const auto & itr = _strategies.get( "fast.sx"_n.value, "fast.sx not found" );
-    _strategies.modify( itr, get_self(), [&]( auto& row ) {
-        row.balance.quantity += issuance.rate;
-    });
-}
-
-[[eosio::action]]
-void sx::push::pushlog( const name executor, const name first_authorizer, const name strategy, const asset mine )
-{
-    require_auth( get_self() );
-}
-
-[[eosio::action]]
-void sx::push::claimlog( const name executor, const asset claimed, const name first_authorizer )
-{
-    require_auth( get_self() );
-    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
-    if ( executor != first_authorizer ) require_recipient( first_authorizer );
-    require_recipient( executor );
-}
-
-[[eosio::action]]
-void sx::push::init()
-{
-    require_auth( get_self() );
-
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
-
-    for ( const auto & itr : _strategies ) {
-        _strategies.modify( itr, get_self(), [&]( auto& row ) {
-            const asset balance = eosio::token::get_balance( SXCPU, get_self() );
-            if ( row.strategy == "fast.sx"_n ) row.balance = extended_asset{ balance.amount, SXCPU };
-            else row.balance = extended_asset{ 0, SXCPU };
+    // Update miner balances
+    uint64_t ranks = 0;
+    for ( auto row : _miners ) {
+        ranks += row.rank;
+    }
+    for ( auto & row : _miners ) {
+        const uint64_t amount = (row.rank * issuance.rate.amount) / ranks;
+        _miners.modify( row, get_self(), [&]( auto & row ) {
+            row.balance.quantity.amount += amount;
         });
     }
 }
 
 [[eosio::action]]
-void sx::push::reset( const name table )
+void sx::push::claimlog( const name first_authorizer, const asset claimed )
 {
     require_auth( get_self() );
-
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
-    sx::push::miners_table _miners( get_self(), get_self().value );
-    // sx::push::state_table _state( get_self(), get_self().value );
-
-    if ( table == "strategies"_n ) erase_table( _strategies );
-    else if ( table == "miners"_n ) erase_table( _miners );
-    // else if ( table == "state"_n ) _state.remove();
-    else check( false, "invalid table name");
+    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+    require_recipient( first_authorizer );
 }
+
+// [[eosio::action]]
+// void sx::push::init()
+// {
+//     require_auth( get_self() );
+
+//     sx::push::strategies_table _strategies( get_self(), get_self().value );
+
+//     for ( const auto & itr : _strategies ) {
+//         _strategies.modify( itr, get_self(), [&]( auto& row ) {
+//             const asset balance = eosio::token::get_balance( SXCPU, get_self() );
+//             if ( row.strategy == "fast.sx"_n ) row.balance = extended_asset{ balance.amount, SXCPU };
+//             else row.balance = extended_asset{ 0, SXCPU };
+//         });
+//     }
+// }
 
 [[eosio::action]]
 void sx::push::deposit( const name from, const name strategy, const extended_asset payment, const extended_asset deposit )
@@ -212,17 +202,19 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
 }
 
 [[eosio::action]]
-void sx::push::setstrategy( const name strategy, const name type )
+void sx::push::setstrategy( const name strategy, const uint64_t priority, const asset fee )
 {
     require_auth( get_self() );
+
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     check( is_account( strategy ), "push::setstrategy: [strategy] account does not exists");
 
-    check( PRIORITY_TYPES.find( type ) != PRIORITY_TYPES.end(), "push::setstrategy: [type] is invalid");
+    // check( PRIORITY_TYPES.find( type ) != PRIORITY_TYPES.end(), "push::setstrategy: [type] is invalid");
 
     auto insert = [&]( auto & row ) {
         row.strategy = strategy;
-        row.type = type;
+        row.priority = priority;
+        row.fee = fee;
         row.balance.contract = SXCPU.get_contract();
         row.balance.quantity.symbol = SXCPU.get_symbol();
     };
@@ -230,7 +222,6 @@ void sx::push::setstrategy( const name strategy, const name type )
     if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
     else _strategies.modify( itr, get_self(), insert );
 }
-
 
 [[eosio::action]]
 void sx::push::delstrategy( const name strategy )
@@ -241,50 +232,58 @@ void sx::push::delstrategy( const name strategy )
     _strategies.erase( itr );
 }
 
-void sx::push::send_rewards( const name executor, const extended_asset ext_quantity )
+void sx::push::send_rewards( const name executor )
 {
-    if ( ext_quantity.quantity.amount ) {
-        // transfer rewards
-        transfer( get_self(), executor, ext_quantity, "rewards" );
+    sx::push::miners_table _miners( get_self(), get_self().value );
 
-        // logging
-        const name first_authorizer = get_first_authorizer( executor );
-        sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-        claimlog.send( executor, ext_quantity.quantity, first_authorizer );
-    }
+    // return;
+    const name first_authorizer = get_first_authorizer( executor );
+
+    // lookup miner balance
+    auto & itr = _miners.get( first_authorizer.value, "push::send_rewards: [first_authorizer] not registered");
+    if ( itr.balance.quantity.amount == 0 ) return;
+
+    // transfer rewards
+    transfer( get_self(), itr.first_authorizer, itr.balance, "push pay" );
+
+    // // logging
+    // sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+    // claimlog.send( first_authorizer, itr.balance.quantity );
+
+    // empty balance
+    _miners.modify( itr, get_self(), [&]( auto & row ) {
+        row.balance.quantity.amount = 0;
+    });
 }
 
-void sx::push::check_sucess_miner( const name first_authorizer )
-{
-    miners_table _miners( get_self(), get_self().value );
-    const uint32_t last = _miners.get( first_authorizer.value, "push::check_success_miner: has not pushed recent successful transaction" ).last.sec_since_epoch();
-    const uint32_t now = current_time_point().sec_since_epoch();
-    check( last >= (now - 3600 * 48), "push::check_success_miner: has not pushed recent successful transaction" );
-}
+// void sx::push::check_sucess_miner( const name first_authorizer )
+// {
+//     miners_table _miners( get_self(), get_self().value );
+//     const uint32_t last = _miners.get( first_authorizer.value, "push::check_success_miner: has not pushed recent successful transaction" ).last.sec_since_epoch();
+//     const uint32_t now = current_time_point().sec_since_epoch();
+//     check( last >= (now - 3600 * 48), "push::check_success_miner: has not pushed recent successful transaction" );
+// }
 
-void sx::push::sucess_miner( const name first_authorizer )
-{
-    miners_table _miners( get_self(), get_self().value );
+// void sx::push::sucess_miner( const name first_authorizer )
+// {
+//     miners_table _miners( get_self(), get_self().value );
 
-    auto insert = [&]( auto & row ) {
-        row.first_authorizer = first_authorizer;
-        row.last = current_time_point();
-    };
-    auto itr = _miners.find( first_authorizer.value );
-    if ( itr == _miners.end() ) _miners.emplace( get_self(), insert );
-    else _miners.modify( itr, get_self(), insert );
-}
+//     auto insert = [&]( auto & row ) {
+//         row.first_authorizer = first_authorizer;
+//         row.last = current_time_point();
+//     };
+//     auto itr = _miners.find( first_authorizer.value );
+//     if ( itr == _miners.end() ) _miners.emplace( get_self(), insert );
+//     else _miners.modify( itr, get_self(), insert );
+// }
 
 void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
 {
     strategies_table _strategies( get_self(), get_self().value );
 
-    auto insert = [&]( auto & row ) {
-        row.last = current_time_point();
+    auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
+    _strategies.modify( itr, get_self(), [&]( auto & row ) {
         row.balance += ext_quantity;
         // if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount >= 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
-    };
-    auto itr = _strategies.find( strategy.value );
-    if ( itr == _strategies.end() ) _strategies.emplace( get_self(), insert );
-    else _strategies.modify( itr, get_self(), insert );
+    });
 }
