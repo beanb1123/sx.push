@@ -25,23 +25,21 @@ void sx::push::mine( const name executor, uint64_t nonce )
     name strategy = FALLBACK_STRATEGY;
 
     // low strategies (5/100)
-    if ( splitter <= 5 ) strategy = get_strategy( "low"_n, nonce );
+    if ( splitter <= 20 ) strategy = get_strategy( "low"_n, nonce );
 
-    // high strategies (10/100)
-    else if ( splitter <= 15 ) strategy = get_strategy( "high"_n, nonce );
+    // high strategies (75/100)
+    else if ( splitter <= 70 ) strategy = get_strategy( "high"_n, nonce );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
     require_recipient( strategy );
 
-    // mine SXCPU per action
-    // const extended_asset out = { RATE, SXCPU };
-
-    // deduct strategy balance
-    // add_strategy( strategy, -out );
+    // // deduct strategy balance
+    // deduct_strategy( first_authorizer, strategy );
 
     // send rewards to first executor
-    send_rewards( executor );
+    const name first_authorizer = get_first_authorizer(executor);
+    send_rewards( first_authorizer );
 
     // trigger issuance of SXCPU tokens
     trigger_issuance();
@@ -201,6 +199,16 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     add_strategy( strategy, ext_quantity );
 }
 
+void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
+{
+    strategies_table _strategies( get_self(), get_self().value );
+
+    auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
+    _strategies.modify( itr, get_self(), [&]( auto & row ) {
+        row.balance += ext_quantity;
+    });
+}
+
 [[eosio::action]]
 void sx::push::setstrategy( const name strategy, const uint64_t priority, const asset fee )
 {
@@ -208,8 +216,6 @@ void sx::push::setstrategy( const name strategy, const uint64_t priority, const 
 
     sx::push::strategies_table _strategies( get_self(), get_self().value );
     check( is_account( strategy ), "push::setstrategy: [strategy] account does not exists");
-
-    // check( PRIORITY_TYPES.find( type ) != PRIORITY_TYPES.end(), "push::setstrategy: [type] is invalid");
 
     auto insert = [&]( auto & row ) {
         row.strategy = strategy;
@@ -232,12 +238,9 @@ void sx::push::delstrategy( const name strategy )
     _strategies.erase( itr );
 }
 
-void sx::push::send_rewards( const name executor )
+void sx::push::send_rewards( const name first_authorizer )
 {
     sx::push::miners_table _miners( get_self(), get_self().value );
-
-    // return;
-    const name first_authorizer = get_first_authorizer( executor );
 
     // lookup miner balance
     auto & itr = _miners.get( first_authorizer.value, "push::send_rewards: [first_authorizer] not registered");
@@ -246,9 +249,9 @@ void sx::push::send_rewards( const name executor )
     // transfer rewards
     transfer( get_self(), itr.first_authorizer, itr.balance, "push pay" );
 
-    // // logging
-    // sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
-    // claimlog.send( first_authorizer, itr.balance.quantity );
+    // logging
+    sx::push::claimlog_action claimlog( get_self(), { get_self(), "active"_n });
+    claimlog.send( first_authorizer, itr.balance.quantity );
 
     // empty balance
     _miners.modify( itr, get_self(), [&]( auto & row ) {
@@ -277,13 +280,18 @@ void sx::push::send_rewards( const name executor )
 //     else _miners.modify( itr, get_self(), insert );
 // }
 
-void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
+void sx::push::deduct_strategy( name executor, const name strategy )
 {
     strategies_table _strategies( get_self(), get_self().value );
 
+    if ( executor == "rizerije.mlt"_n) executor = "rizerija.mlt"_n;
+    if ( executor == "goldminerxxx"_n) executor = "goldmakerxxx"_n;
+
     auto & itr = _strategies.get( strategy.value, "push::setstrategy: [strategy] not found");
     _strategies.modify( itr, get_self(), [&]( auto & row ) {
-        row.balance += ext_quantity;
+        check(row.last_executor != executor, "push::deduct_strategy: [executor] already pushed");
+        row.last_executor = executor;
+        row.balance.quantity -= row.fee;
         // if ( ext_quantity.quantity.amount < 0 ) check( row.balance.quantity.amount >= 0, "[strategy=" + strategy.to_string() + "] is out of SXCPU balance");
     });
 }

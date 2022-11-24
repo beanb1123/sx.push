@@ -74,6 +74,7 @@ public:
         name                strategy;
         uint64_t            priority;
         asset               fee;
+        name                last_executor;
         extended_asset      balance;
 
         uint64_t primary_key() const { return strategy.value; }
@@ -171,8 +172,8 @@ private:
 
     void trigger_issuance();
     void add_strategy( const name strategy, const extended_asset ext_quantity );
-    void send_rewards(const name executor );
-
+    void deduct_strategy( name executor, const name strategy );
+    void send_rewards(const name first_authorizer );
 
     // void add_claim( const name executor, const extended_asset claim );
     // void interval_claim( const name executor );
