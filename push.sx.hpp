@@ -109,6 +109,9 @@ public:
     void setminer( const name first_authorizer, const uint64_t rank );
 
     [[eosio::action]]
+    void delminer( const name first_authorizer );
+
+    [[eosio::action]]
     void delstrategy( const name strategy );
 
     [[eosio::action]]

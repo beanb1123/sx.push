@@ -96,6 +96,17 @@ void sx::push::setminer( const name first_authorizer, const uint64_t rank )
     else _miners.modify( itr, get_self(), insert );
 }
 
+[[eosio::action]]
+void sx::push::delminer( const name first_authorizer )
+{
+    require_auth( get_self() );
+
+    sx::push::miners_table _miners( get_self(), get_self().value );
+
+    auto & itr = _miners.get( first_authorizer.value, "first_authorizer does not exists" );
+    _miners.erase( itr );
+}
+
 void sx::push::trigger_issuance()
 {
     sx::push::issuance_table _issuance( get_self(), get_self().value );
