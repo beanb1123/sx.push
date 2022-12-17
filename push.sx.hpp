@@ -28,7 +28,8 @@ public:
         "heavy.sx"_n,
         "oracle.sx"_n,
         "proxy4nation"_n,
-        "unpack.gems"_n
+        "unpack.gems"_n,
+        "exo.sx"_n
     };
     const vector<name> HIGH_STRATEGIES = {
         "basic.sx"_n,
