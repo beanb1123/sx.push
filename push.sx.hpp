@@ -160,7 +160,8 @@ private:
     vector<name> get_strategies( const name type );
     name get_strategy( const name type, const uint64_t random );
 
-    void handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
+    void handle_eos_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
+    void handle_sxcpu_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo );
     // extended_asset calculate_retire( const asset payment );
     // int64_t calculate_issue( const extended_asset payment );
 

@@ -38,9 +38,9 @@ void sx::push::mine( const name executor, uint64_t nonce )
     // // deduct strategy balance
     // deduct_strategy( first_authorizer, strategy );
 
-    // // send rewards to first executor
-    // const name first_authorizer = get_first_authorizer(executor);
-    // send_rewards( first_authorizer );
+    // send rewards to first executor
+    const name first_authorizer = get_first_authorizer(executor);
+    send_rewards( first_authorizer );
 
     // // trigger issuance of SXCPU tokens
     // trigger_issuance();
@@ -191,7 +191,7 @@ void sx::push::ontransfer( const name from, const name to, const extended_asset 
 {
     require_auth( get_self() );
 
-    handle_transfer( from, to, ext_quantity, memo );
+    handle_sxcpu_transfer( from, to, ext_quantity, memo );
 }
 
 /**
@@ -207,16 +207,51 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     if ( from == "eosio"_n ) return; // ignore eosio transfers (RAM, CPU, etc)
 
     const name contract = get_first_receiver();
-    check( contract == get_self(), "invalid contract" );
-    handle_transfer( from, to, extended_asset{ quantity, contract }, memo );
+    const extended_symbol ext_sym = extended_symbol{ quantity.symbol, contract };
+    check( ext_sym == EOS || ext_sym == SXCPU, "invalid incoming transfer" );
+
+    if ( ext_sym == EOS ) {
+        handle_eos_transfer( from, to, extended_asset{ quantity, contract }, memo );
+    }
+
+    if ( ext_sym == SXCPU ) {
+        handle_sxcpu_transfer( from, to, extended_asset{ quantity, contract }, memo );
+    }
 }
 
-void sx::push::handle_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
+
+void sx::push::handle_sxcpu_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
 {
     // ignore no-incoming transfers
     if ( to != get_self() ) return;
 
-    // const asset quantity = ext_quantity.quantity;
+    check(false, "cannot transfer sxcpu to push contract");
+}
+
+
+void sx::push::handle_eos_transfer( const name from, const name to, const extended_asset ext_quantity, const std::string memo )
+{
+    // ignore no-incoming transfers
+    if ( to != get_self() ) return;
+
+    sx::push::miners_table _miners( get_self(), get_self().value );
+
+    // Update miner balances
+    uint64_t ranks = 0;
+    for ( auto row : _miners ) {
+        ranks += row.rank;
+    }
+
+    for ( auto & row : _miners ) {
+        check( row.balance.get_extended_symbol() == ext_quantity.get_extended_symbol(), "push::handle_transfer: invalid extended symbol");
+        const uint64_t amount = (row.rank * ext_quantity.quantity.amount) / ranks;
+        _miners.modify( row, get_self(), [&]( auto & row ) {
+            row.balance.quantity.amount += amount;
+        });
+    }
+}
+
+
     // const name contract = ext_quantity.contract;
     // const extended_symbol ext_sym = { ext_quantity.quantity.symbol, contract };
     // const name strategy = sx::utils::parse_name(memo);
@@ -224,7 +259,7 @@ void sx::push::handle_transfer( const name from, const name to, const extended_a
     // check( ext_sym == SXCPU, "invalid symbol" );
     // check( strategy.value, "invalid strategy" );
     // add_strategy( strategy, ext_quantity );
-}
+// }
 
 // void sx::push::add_strategy( const name strategy, const extended_asset ext_quantity )
 // {
