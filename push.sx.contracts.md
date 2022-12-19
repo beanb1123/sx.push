@@ -32,7 +32,7 @@ icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485
 spec_version: "0.2.0"
 title: Close Token Balance
 summary: 'Close {{nowrap owner}}’s zero quantity balance'
-icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 {{owner}} agrees to close their zero quantity balance for the {{symbol_to_symbol_code symbol}} token.
@@ -45,7 +45,7 @@ RAM will be refunded to the RAM payer of the {{symbol_to_symbol_code symbol}} to
 spec_version: "0.2.0"
 title: Create New Token
 summary: 'Create a new token'
-icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 {{$action.account}} agrees to create a new token with symbol {{asset_to_symbol_code maximum_supply}} to be managed by {{issuer}}.
@@ -62,7 +62,7 @@ RAM will deducted from {{$action.account}}’s resources to create the necessary
 spec_version: "0.2.0"
 title: Issue Tokens into Circulation
 summary: 'Issue {{nowrap quantity}} into circulation and transfer into {{nowrap to}}’s account'
-icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 The token manager agrees to issue {{quantity}} into circulation, and transfer it into {{to}}’s account.
@@ -81,7 +81,7 @@ This action does not allow the total quantity to exceed the max allowed supply o
 spec_version: "0.2.0"
 title: Open Token Balance
 summary: 'Open a zero quantity balance for {{nowrap owner}}'
-icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 {{ram_payer}} agrees to establish a zero quantity balance for {{owner}} for the {{symbol_to_symbol_code symbol}} token.
@@ -94,7 +94,7 @@ If {{owner}} does not have a balance for {{symbol_to_symbol_code symbol}}, {{ram
 spec_version: "0.2.0"
 title: Remove Tokens from Circulation
 summary: 'Remove {{nowrap quantity}} from circulation'
-icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 The token manager agrees to remove {{quantity}} from circulation, taken from their own account.
@@ -109,7 +109,7 @@ The token manager agrees to remove {{quantity}} from circulation, taken from the
 spec_version: "0.2.0"
 title: Transfer Tokens
 summary: 'Send {{nowrap quantity}} from {{nowrap from}} to {{nowrap to}}'
-icon: @ICON_BASE_URL@/@TRANSFER_ICON_URI@
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
 ---
 
 {{from}} agrees to send {{quantity}} to {{to}}.
@@ -121,3 +121,85 @@ icon: @ICON_BASE_URL@/@TRANSFER_ICON_URI@
 If {{from}} is not already the RAM payer of their {{asset_to_symbol_code quantity}} token balance, {{from}} will be designated as such. As a result, RAM will be deducted from {{from}}’s resources to refund the original RAM payer.
 
 If {{to}} does not have a balance for {{asset_to_symbol_code quantity}}, {{from}} will be designated as the RAM payer of the {{asset_to_symbol_code quantity}} token balance for {{to}}. As a result, RAM will be deducted from {{from}}’s resources to create the necessary records.
+
+
+<h1 class="contract">claimlog</h1>
+
+---
+spec_version: "0.2.0"
+title: claimlog
+summary: claimlog
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">claimlog</h1>
+
+---
+spec_version: "0.2.0"
+title: claimlog
+summary: claimlog
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">delminer</h1>
+
+---
+spec_version: "0.2.0"
+title: delminer
+summary: delminer
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">ontransfer</h1>
+
+---
+spec_version: "0.2.0"
+title: ontransfer
+summary: ontransfer
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">ontransfer</h1>
+
+---
+spec_version: "0.2.0"
+title: ontransfer
+summary: ontransfer
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">reset</h1>
+
+---
+spec_version: "0.2.0"
+title: reset
+summary: reset
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">reclaim</h1>
+
+---
+spec_version: "0.2.0"
+title: reclaim
+summary: reclaim
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">setminer</h1>
+
+---
+spec_version: "0.2.0"
+title: setminer
+summary: setminer
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---
+
+<h1 class="contract">setminers</h1>
+
+---
+spec_version: "0.2.0"
+title: setminers
+summary: setminers
+icon: https://avatars1.githubusercontent.com/u/60660770#d6a1df4bbf2942f23c3a4485eb9942cb37c5348945e84be8c53e2ef9254ed8da
+---

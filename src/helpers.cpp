@@ -15,13 +15,13 @@ void sx::push::reset( const name table )
 {
     require_auth( get_self() );
 
-    sx::push::strategies_table _strategies( get_self(), get_self().value );
+    // sx::push::strategies_table _strategies( get_self(), get_self().value );
     sx::push::miners_table _miners( get_self(), get_self().value );
-    sx::push::issuance_table _issuance( get_self(), get_self().value );
+    // sx::push::issuance_table _issuance( get_self(), get_self().value );
 
-    if ( table == "strategies"_n ) erase_table( _strategies );
-    else if ( table == "miners"_n ) erase_table( _miners );
-    else if ( table == "issuance"_n ) _issuance.remove();
+    // if ( table == "strategies"_n ) erase_table( _strategies );
+    if ( table == "miners"_n ) erase_table( _miners );
+    // else if ( table == "issuance"_n ) _issuance.remove();
     else check( false, "invalid table name");
 }
 
