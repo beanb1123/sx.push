@@ -19,16 +19,17 @@ void sx::push::mine( const name executor, uint64_t nonce )
     const uint64_t random = (nonce + block_num + executor.value) % 10000;
 
     // main splitter
-    const int splitter = random % 100;
+    // const int splitter = random % 100;
+    const int splitter = random % ((LOW_STRATEGIES.size() + HIGH_STRATEGIES.size() * 10) * 4);
 
-    // fallback strategy (85/100)
+    // fallback strategy (1/2)
     name strategy = FALLBACK_STRATEGY;
 
-    // low strategies (5/100)
-    if ( splitter <= 20 ) strategy = get_strategy( "low"_n, nonce );
+    // low strategies (1/20th)
+    if ( splitter <= LOW_STRATEGIES.size() ) strategy = get_strategy( "low"_n, nonce );
 
-    // high strategies (75/100)
-    else if ( splitter <= 70 ) strategy = get_strategy( "high"_n, nonce );
+    // high strategies (10x)
+    else if ( splitter <= HIGH_STRATEGIES.size() * 10 ) strategy = get_strategy( "high"_n, nonce );
 
     // validate strategy
     check( strategy.value, "push::mine: invalid [strategy=" + strategy.to_string() + "]");
