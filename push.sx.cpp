@@ -79,7 +79,7 @@ vector<name> sx::push::get_strategies( const name type )
 // }
 
 [[eosio::action]]
-void sx::push::setminer( const name first_authorizer, const uint64_t rank )
+void sx::push::setminer( const name first_authorizer, const optional<uint64_t> efficiency, const optional<uint64_t> cpu )
 {
     require_auth( get_self() );
 
@@ -88,7 +88,8 @@ void sx::push::setminer( const name first_authorizer, const uint64_t rank )
 
     auto insert = [&]( auto & row ) {
         row.first_authorizer = first_authorizer;
-        row.rank = rank;
+        if ( efficiency ) row.efficiency = *efficiency;
+        if ( cpu ) row.cpu = *cpu;
         row.balance.contract = EOS.get_contract();
         row.balance.quantity.symbol = EOS.get_symbol();
     };
@@ -159,7 +160,7 @@ void sx::push::delminer( const name first_authorizer )
 void sx::push::claimlog( const name first_authorizer, const asset claimed )
 {
     require_auth( get_self() );
-    if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
+    // if ( is_account("cpu.sx"_n) ) require_recipient( "cpu.sx"_n );
     require_recipient( first_authorizer );
 }
 
@@ -237,14 +238,16 @@ void sx::push::handle_eos_transfer( const name from, const name to, const extend
     sx::push::miners_table _miners( get_self(), get_self().value );
 
     // Update miner balances
-    uint64_t ranks = 0;
+    uint64_t total = 0;
     for ( auto row : _miners ) {
-        ranks += row.rank;
+        total += row.efficiency;
     }
 
     for ( auto & row : _miners ) {
         check( row.balance.get_extended_symbol() == ext_quantity.get_extended_symbol(), "push::handle_transfer: invalid extended symbol");
-        const uint64_t amount = (row.rank * ext_quantity.quantity.amount) / ranks;
+        if ( row.efficiency == 0 ) continue;
+        const uint64_t amount = (row.efficiency * ext_quantity.quantity.amount) / total;
+        if ( amount == 0 ) continue;
         _miners.modify( row, get_self(), [&]( auto & row ) {
             row.balance.quantity.amount += amount;
         });

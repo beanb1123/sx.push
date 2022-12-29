@@ -64,7 +64,8 @@ public:
 
     struct [[eosio::table("miners")]] miners_row {
         name                first_authorizer;
-        uint64_t            rank;
+        uint64_t            efficiency;
+        uint64_t            cpu;
         extended_asset      balance;
 
         uint64_t primary_key() const { return first_authorizer.value; }
@@ -107,7 +108,7 @@ public:
     // void setstrategy( const name strategy, const uint64_t priority, const asset fee );
 
     [[eosio::action]]
-    void setminer( const name first_authorizer, const uint64_t rank );
+    void setminer( const name first_authorizer, const optional<uint64_t> efficiency, const optional<uint64_t> cpu );
 
     [[eosio::action]]
     void delminer( const name first_authorizer );
