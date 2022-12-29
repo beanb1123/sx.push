@@ -82,6 +82,7 @@ vector<name> sx::push::get_strategies( const name type )
 void sx::push::setminer( const name first_authorizer, const optional<uint64_t> efficiency, const optional<uint64_t> cpu )
 {
     require_auth( get_self() );
+    require_recipient( "cpu.sx"_n );
 
     sx::push::miners_table _miners( get_self(), get_self().value );
     check( is_account( first_authorizer ), "push::setminer: [first_authorizer] account does not exists");
@@ -98,20 +99,20 @@ void sx::push::setminer( const name first_authorizer, const optional<uint64_t> e
     else _miners.modify( itr, get_self(), insert );
 }
 
-[[eosio::action]]
-void sx::push::setminers( const name table )
-{
-    require_auth( get_self() );
+// [[eosio::action]]
+// void sx::push::setminers( const name table )
+// {
+//     require_auth( get_self() );
 
-    sx::push::miners_table _miners( get_self(), get_self().value );
+//     sx::push::miners_table _miners( get_self(), get_self().value );
     
-    for ( auto & row : _miners ) {
-        _miners.modify( row, get_self(), [&]( auto & row ) {
-            row.balance.contract = EOS.get_contract();
-            row.balance.quantity.symbol = EOS.get_symbol();
-        });
-    }
-}
+//     for ( auto & row : _miners ) {
+//         _miners.modify( row, get_self(), [&]( auto & row ) {
+//             row.balance.contract = EOS.get_contract();
+//             row.balance.quantity.symbol = EOS.get_symbol();
+//         });
+//     }
+// }
 
 [[eosio::action]]
 void sx::push::delminer( const name first_authorizer )

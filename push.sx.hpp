@@ -128,8 +128,8 @@ public:
     [[eosio::action]]
     void reset( const name table );
 
-    [[eosio::action]]
-    void setminers( const name table );
+    // [[eosio::action]]
+    // void setminers( const name table );
 
     // [[eosio::action]]
     // void deposit( const name from, const name strategy, const extended_asset payment, const extended_asset deposit );
