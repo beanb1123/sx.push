@@ -207,6 +207,7 @@ void sx::push::on_transfer( const name from, const name to, const asset quantity
     // ignore outgoing transfers
     if ( from == get_self() ) return;
     if ( from == "eosio"_n ) return; // ignore eosio transfers (RAM, CPU, etc)
+    if ( from != "fee.sx"_n ) return; // ignore no-fee transfers
 
     const name contract = get_first_receiver();
     const extended_symbol ext_sym = extended_symbol{ quantity.symbol, contract };
