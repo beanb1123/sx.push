@@ -39,7 +39,7 @@ void sx::push::retire( const extended_asset value, const string memo )
 
 void sx::push::transfer( const name from, const name to, const extended_asset value, const string memo )
 {
-    check(false, "SXCPU transfer has been disabled, please request reclaim refund in https://t.me/Defibox_official");
+    // check(false, "SXCPU transfer has been disabled, please request reclaim refund in https://t.me/Defibox_official");
     eosio::token::transfer_action transfer( value.contract, { from, "active"_n });
     transfer.send( from, to, value.quantity, memo );
 }
