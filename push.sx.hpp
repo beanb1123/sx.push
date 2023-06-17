@@ -26,16 +26,17 @@ public:
         "eosnationdsp"_n,
         "eosnationftw"_n,
         "fee.sx"_n,
-        "heavy.sx"_n,
+        // "heavy.sx"_n,
         "oracle.sx"_n,
         "proxy4nation"_n,
-        "unpack.gems"_n
+        "unpack.gems"_n,
+        "ndx.sx"_n,
     };
     const vector<name> HIGH_STRATEGIES = {
         "basic.sx"_n,
         "hft.sx"_n,
         "liq.sx"_n,
-        "top.sx"_n
+        // "top.sx"_n
     };
 
     // /**
